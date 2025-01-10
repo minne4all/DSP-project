@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Viewer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .sidebar {
+            height: 100vh;
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+        .sidebar a {
+            display: block;
+            padding: 10px 15px;
+            color: #000;
+            text-decoration: none;
+        }
+        .sidebar a:hover {
+            background-color: #e9ecef;
+        }
+        .content {
+            padding: 20px;
+        }
+        iframe {
+            width: 100%;
+            height: 500px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar">
+                <div class="d-flex flex-column">
+                    <h5 class="text-center">Project 1</h5>
+                    <a href="#">Overview</a>
+                    <a href="#">Account</a>
+                    <a href="#">Groups</a>
+                    <a href="#">Manage</a>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 col-lg-10">
+                <div class="content">
+                    <ul class="nav nav-tabs">
+                        <li class="nav-item">
+                            <a class="nav-link" href="#overview" data-bs-toggle="tab">Overview</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#documents" data-bs-toggle="tab">Documents</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#linked-data" data-bs-toggle="tab">Linked Data</a>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <div class="tab-pane fade" id="overview">
+                            <p>Overview content goes here...</p>
+                        </div>
+                        <div class="tab-pane fade show active" id="documents">
+                            <div class="categories">
+                                <h5>Categories</h5>
+                                <ul class="list-group">
+                                    <li class="list-group-item">
+                                        <a href="#" onclick="loadDocuments()">View PDFs</a>
+                                    </li>
+                                </ul>
+                                <div id="documents-view" class="mt-4">
+                                    <h5>Documents</h5>
+                                    <ul id="documents-list" class="list-group"></ul>
+                                </div>
+                                <div id="document-content-view" class="mt-4">
+                                    <h5>Document Viewer</h5>
+                                    <iframe id="document-viewer" src="" title="PDF Viewer">Your browser does not support iframes.</iframe>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="linked-data">
+                            <p>Linked Data content goes here...</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function loadDocuments() {
+            fetch('/get_documents/all') // Fetch PDF files
+                .then(response => response.json())
+                .then(data => {
+                    const documentsList = document.getElementById('documents-list');
+                    documentsList.innerHTML = ''; // Clear previous list
+    
+                    if (data.documents.length === 0) {
+                        documentsList.innerHTML = '<li class="list-group-item">No documents found.</li>';
+                    } else {
+                        data.documents.forEach(doc => {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item';
+                            li.innerHTML = `<a href="#" onclick="viewDocument('${doc}')">${doc}</a>`;
+                            documentsList.appendChild(li);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error fetching documents:', error));
+        }
+    
+        function viewDocument(docName) {
+            const viewer = document.getElementById('document-viewer');
+            viewer.src = `/pdf/${docName}`; // Update iframe source to show the selected PDF
+        }
+    </script>
+</body>
+</html>
