@@ -273,7 +273,7 @@ def generate_gml_from_form_data(form_data):
             "sectorid": source["sectorid"],
             **source["emissions"],
             "specficimobilesource": specmosos,
-            "q": "1"
+            "q": source["q"]
         }
         mobile_sources.append(fill_template(moso, **mosodata))
 
@@ -624,8 +624,8 @@ def aerius():
         # Extract associated activities
         activities = g.objects(project_uri, rdflib.URIRef("http://example.org/graphs/aerius-extension#includes"))
         for activity in activities:
-            mobile_source = g.value(activity, rdflib.URIRef("http://example.org/graphs/aerius-extension#hasEmissionSource"))
-            if mobile_source:
+            mobile_sources = list(g.objects(activity, rdflib.URIRef("http://example.org/graphs/aerius-extension#hasEmissionSource")))
+            for mobile_source in mobile_sources:
                 specific_sources = []
                 for specific in g.objects(mobile_source, rdflib.URIRef("http://example.org/graphs/aerius-extension#hasSpecificMobileSource")):
                     specific_sources.append({
@@ -646,7 +646,6 @@ def aerius():
                     },
                     "specific_sources": specific_sources
                 })
-
     if request.method == 'POST':
         # Get updated data from the form
         form_data["name"] = request.form.get("name", "Default Project Name")
@@ -665,7 +664,8 @@ def aerius():
                     "PM10": request.form.get(f"PM10_{i}", source["emissions"]["PM10"]),
                     "NO2": request.form.get(f"NO2_{i}", source["emissions"]["NO2"]),
                 },
-                "specific_sources": []
+                "specific_sources": [],
+                "q": i + 1
             }
 
             # Handle specific mobile sources
@@ -674,7 +674,7 @@ def aerius():
                     "mobtype": request.form.get(f"mobtype_{i}_{j}", specific["mobtype"]),
                     "fuelyear": request.form.get(f"fuelyear_{i}_{j}", specific["fuelyear"]),
                     "description": request.form.get(f"description_{i}_{j}", specific["description"]),
-                    "fueloruse": 'operatingHoursPerYear' if specific["mobtype"] in ['B2T', 'B4T', 'LPG'] else 'literFuelPerYear'
+                    "fueloruse": 'literFuelPerYear' if str(specific["mobtype"]) in ['B2T', 'B4T', 'LPG'] else 'operatingHoursPerYear'
                 }
                 updated_source["specific_sources"].append(updated_specific)
 

@@ -184,52 +184,230 @@ aerius:specificSource1 a aerius:SpecificMobileSource ;
     aerius:fuelyear 1000.0 ;
     aerius:description "Bulldozer in operation." .
 
-# Example Project 1
+# Exampple projects
+# Project 1: Urban Highway Expansion
 :Project1 a aerius:ConstructionProject ;
-    rdfs:label "Example Project 1" ;
-    aerius:includes :Activity1 ;
+    rdfs:label "Urban Highway Expansion" ;
+    aerius:includes :Activity1, :Activity2 ;
     aerius:affects :Region1 .
 
 :Activity1 a nen:Activity ;
-    rdfs:label "Construction Vehicle Activity" ;
-    aerius:hasEmissionSource :MobileSource1 .
+    rdfs:label "Excavation for Highway Foundation" ;
+    aerius:hasEmissionSource :MobileSource1, :MobileSource2 .
 
 :MobileSource1 a aerius:MobileSource ;
-    aerius:mosolabel "Construction Vehicle 1" ;
-    aerius:mosoposition "138238.12921947314 474076.28400205023" ;
-    aerius:sectorid "3220" ;  # Bouw, Industrie en Delfstoffenwinning
-    aerius:emitsNH3 12.5 ;
-    aerius:emitsNOX 30.0 ;
-    aerius:emitsPM10 5.0 ;
-    aerius:emitsNO2 8.0 ;
+    aerius:mosolabel "Excavator" ;
+    aerius:mosoposition "138238.12121234321 474076.25637847502" ;
+    aerius:sectorid "3220" ;
+    aerius:emitsNH3 18.0 ;
+    aerius:emitsNOX 40.0 ;
+    aerius:emitsPM10 9.0 ;
+    aerius:emitsNO2 14.0 ;
     aerius:hasSpecificMobileSource :SpecificSource1 .
 
 :SpecificSource1 a aerius:SpecificMobileSource ;
     aerius:mobtype "B4T" ;
-    aerius:fuelyear 1000 ;
-    aerius:description "Bulldozer in operation." .
-
-# Example Project 2
-:Project2 a aerius:ConstructionProject ;
-    rdfs:label "Example Project 2" ;
-    aerius:includes :Activity2 ;
-    aerius:affects :Region2 .
-
-:Activity2 a nen:Activity ;
-    rdfs:label "Road Construction Activity" ;
-    aerius:hasEmissionSource :MobileSource2 .
+    aerius:fuelyear 1300 ;
+    aerius:description "Large excavator used for excavation of highway foundation." .
 
 :MobileSource2 a aerius:MobileSource ;
-    aerius:mosolabel "Road Construction Vehicle" ;
-    aerius:mosoposition "52.378376, 4.900240" ;
-    aerius:sectorid "Sector-B" ;
-    aerius:emitsNH3 20.0 ;
-    aerius:emitsNOX 50.0 ;
-    aerius:emitsPM10 10.0 ;
-    aerius:emitsNO2 15.0 ;
+    aerius:mosolabel "Dump Truck" ;
+    aerius:mosoposition "138238.12250001235 474077.25900123456" ;
+    aerius:sectorid "3210" ;
+    aerius:emitsNH3 10.0 ;
+    aerius:emitsNOX 30.0 ;
+    aerius:emitsPM10 5.0 ;
+    aerius:emitsNO2 8.0 ;
     aerius:hasSpecificMobileSource :SpecificSource2 .
 
 :SpecificSource2 a aerius:SpecificMobileSource ;
+    aerius:mobtype "LPG" ;
+    aerius:fuelyear 1000 ;
+    aerius:description "Dump truck for transporting excavated material." .
+
+:Activity2 a nen:Activity ;
+    rdfs:label "Paving of New Highway Lanes" ;
+    aerius:hasEmissionSource :MobileSource3, :MobileSource4 .
+
+:MobileSource3 a aerius:MobileSource ;
+    aerius:mosolabel "Asphalt Paver" ;
+    aerius:mosoposition "138240.12763487521 474080.26347891012" ;
+    aerius:sectorid "3530" ;
+    aerius:emitsNH3 12.0 ;
+    aerius:emitsNOX 45.0 ;
+    aerius:emitsPM10 8.0 ;
+    aerius:emitsNO2 18.0 ;
+    aerius:hasSpecificMobileSource :SpecificSource3 .
+
+:SpecificSource3 a aerius:SpecificMobileSource ;
     aerius:mobtype "B2T" ;
-    aerius:fuelyear 1500.0 ;
-    aerius:description "Excavator in operation." .
+    aerius:fuelyear 1400 ;
+    aerius:description "Asphalt paver for laying down new surface on highway." .
+
+:MobileSource4 a aerius:MobileSource ;
+    aerius:mosolabel "Road Roller" ;
+    aerius:mosoposition "138241.12845329012 474082.26567843845" ;
+    aerius:sectorid "3220" ;
+    aerius:emitsNH3 8.0 ;
+    aerius:emitsNOX 35.0 ;
+    aerius:emitsPM10 6.0 ;
+    aerius:emitsNO2 10.0 ;
+    aerius:hasSpecificMobileSource :SpecificSource4 .
+
+:SpecificSource4 a aerius:SpecificMobileSource ;
+    aerius:mobtype "MUT" ;
+    aerius:fuelyear 900 ;
+    aerius:description "Road roller for compacting newly paved lanes." .
+
+# Project 2: Bridge Reconstruction Over River
+:Project2 a aerius:ConstructionProject ;
+    rdfs:label "Bridge Reconstruction Over River" ;
+    aerius:includes :Activity3, :Activity4 ;
+    aerius:affects :Region2 .
+
+:Activity3 a nen:Activity ;
+    rdfs:label "Demolition of Old Bridge" ;
+    aerius:hasEmissionSource :MobileSource5, :MobileSource6 .
+
+:MobileSource5 a aerius:MobileSource ;
+    aerius:mosolabel "Demolition Excavator" ;
+    aerius:mosoposition "138230.11889922134 474050.24587658900" ;
+    aerius:sectorid "3220" ;
+    aerius:emitsNH3 10.0 ;
+    aerius:emitsNOX 25.0 ;
+    aerius:emitsPM10 8.0 ;
+    aerius:emitsNO2 12.0 ;
+    aerius:hasSpecificMobileSource :SpecificSource5 .
+
+:SpecificSource5 a aerius:SpecificMobileSource ;
+    aerius:mobtype "ZUT" ;
+    aerius:fuelyear 1100 ;
+    aerius:description "Excavator used for demolishing old bridge structure." .
+
+:MobileSource6 a aerius:MobileSource ;
+    aerius:mosolabel "Crane" ;
+    aerius:mosoposition "138231.11913450734 474052.24784565842" ;
+    aerius:sectorid "3530" ;
+    aerius:emitsNH3 5.0 ;
+    aerius:emitsNOX 20.0 ;
+    aerius:emitsPM10 7.0 ;
+    aerius:emitsNO2 10.0 ;
+    aerius:hasSpecificMobileSource :SpecificSource6 .
+
+:SpecificSource6 a aerius:SpecificMobileSource ;
+    aerius:mobtype "B4T" ;
+    aerius:fuelyear 1200 ;
+    aerius:description "Crane used for lifting bridge debris." .
+
+:Activity4 a nen:Activity ;
+    rdfs:label "New Bridge Construction" ;
+    aerius:hasEmissionSource :MobileSource7, :MobileSource8 .
+
+:MobileSource7 a aerius:MobileSource ;
+    aerius:mosolabel "Concrete Pump" ;
+    aerius:mosoposition "138232.11976543312 474054.24934219023" ;
+    aerius:sectorid "3220" ;
+    aerius:emitsNH3 7.0 ;
+    aerius:emitsNOX 28.0 ;
+    aerius:emitsPM10 6.0 ;
+    aerius:emitsNO2 11.0 ;
+    aerius:hasSpecificMobileSource :SpecificSource7 .
+
+:SpecificSource7 a aerius:SpecificMobileSource ;
+    aerius:mobtype "B2T" ;
+    aerius:fuelyear 1300 ;
+    aerius:description "Concrete pump for placing concrete in bridge construction." .
+
+:MobileSource8 a aerius:MobileSource ;
+    aerius:mosolabel "Masonry Lifting Crane" ;
+    aerius:mosoposition "138233.12045637455 474056.25100256873" ;
+    aerius:sectorid "3530" ;
+    aerius:emitsNH3 6.0 ;
+    aerius:emitsNOX 30.0 ;
+    aerius:emitsPM10 5.0 ;
+    aerius:emitsNO2 9.0 ;
+    aerius:hasSpecificMobileSource :SpecificSource8 .
+
+:SpecificSource8 a aerius:SpecificMobileSource ;
+    aerius:mobtype "MUT" ;
+    aerius:fuelyear 1400 ;
+    aerius:description "Crane used for lifting masonry blocks during bridge construction." .
+
+# Project 3: Residential Area Development
+:Project3 a aerius:ConstructionProject ;
+    rdfs:label "Residential Area Development" ;
+    aerius:includes :Activity5, :Activity6 ;
+    aerius:affects :Region3 .
+
+:Activity5 a nen:Activity ;
+    rdfs:label "Site Preparation and Excavation" ;
+    aerius:hasEmissionSource :MobileSource9, :MobileSource10 .
+
+:MobileSource9 a aerius:MobileSource ;
+    aerius:mosolabel "Excavation site" ;
+    aerius:mosoposition "138245.11583246976 474090.25857302056" ;
+    aerius:sectorid "3220" ;
+    aerius:emitsNH3 22.0 ;
+    aerius:emitsNOX 55.0 ;
+    aerius:emitsPM10 12.0 ;
+    aerius:emitsNO2 17.0 ;
+    aerius:hasSpecificMobileSource :SpecificSource9, :SpecificSource10 .
+
+:SpecificSource9 a aerius:SpecificMobileSource ;
+    aerius:mobtype "B2T" ;
+    aerius:fuelyear 1400 ;
+    aerius:description "Excavator used for clearing land and digging foundations." .
+
+:SpecificSource10 a aerius:SpecificMobileSource ;
+    aerius:mobtype "LPG" ;
+    aerius:fuelyear 1200 ;
+    aerius:description "Mobile operator for moving stuff." .
+
+:MobileSource10 a aerius:MobileSource ;
+    aerius:mosolabel "Bulldozer" ;
+    aerius:mosoposition "138246.11674459855 474092.25958603785" ;
+    aerius:sectorid "3210" ;
+    aerius:emitsNH3 15.0 ;
+    aerius:emitsNOX 48.0 ;
+    aerius:emitsPM10 9.0 ;
+    aerius:emitsNO2 13.0 ;
+    aerius:hasSpecificMobileSource :SpecificSource10 .
+
+:SpecificSource10 a aerius:SpecificMobileSource ;
+    aerius:mobtype "LPG" ;
+    aerius:fuelyear 1100 ;
+    aerius:description "Bulldozer used for site leveling and land clearing." .
+
+:Activity6 a nen:Activity ;
+    rdfs:label "Construction of Residential Buildings" ;
+    aerius:hasEmissionSource :MobileSource11, :MobileSource12 .
+
+:MobileSource11 a aerius:MobileSource ;
+    aerius:mosolabel "Cement Mixer" ;
+    aerius:mosoposition "138247.11789031589 474094.26082949835" ;
+    aerius:sectorid "3530" ;
+    aerius:emitsNH3 8.0 ;
+    aerius:emitsNOX 38.0 ;
+    aerius:emitsPM10 7.0 ;
+    aerius:emitsNO2 10.0 ;
+    aerius:hasSpecificMobileSource :SpecificSource11 .
+
+:SpecificSource11 a aerius:SpecificMobileSource ;
+    aerius:mobtype "B4T" ;
+    aerius:fuelyear 1300 ;
+    aerius:description "Cement mixer used for transporting and mixing cement for construction." .
+
+:MobileSource12 a aerius:MobileSource ;
+    aerius:mosolabel "Forklift" ;
+    aerius:mosoposition "138248.11856734032 474096.26173290588" ;
+    aerius:sectorid "3220" ;
+    aerius:emitsNH3 5.0 ;
+    aerius:emitsNOX 20.0 ;
+    aerius:emitsPM10 6.0 ;
+    aerius:emitsNO2 9.0 ;
+    aerius:hasSpecificMobileSource :SpecificSource12 .
+
+:SpecificSource12 a aerius:SpecificMobileSource ;
+    aerius:mobtype "MUT" ;
+    aerius:fuelyear 900 ;
+    aerius:description "Forklift used for moving materials around the construction site." .
