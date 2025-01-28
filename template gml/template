@@ -1,0 +1,35 @@
+featurecollection
+metadata
+    year
+    name
+/metadata
+mobilesource *
+    label\name
+    point/line/plane
+    position
+    nh3 value
+    nox value
+    pm10 value?
+    no2 value
+    specficimobilesource *
+        offRoadMobileSourceType
+        description
+        literFuelPerYear / operatinghoursperyear
+    \specficimobilesource
+\mobilesource
+calpoint *
+    Inser ourselves, probably not worth looking into
+\calcpoint
+\featurecollection
+
+
+name
+year
+label
+position
+nh3
+nox
+pm10
+no2
+description
+fuelyear

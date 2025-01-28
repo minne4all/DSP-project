@@ -2,124 +2,192 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Viewer</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>RDF Validator</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        /* Custom styles */
+        .data-table td {
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            max-width: 200px;
         }
-        .sidebar {
-            height: 100vh;
-            background-color: #f8f9fa;
-            padding-top: 20px;
-        }
-        .sidebar a {
-            display: block;
-            padding: 10px 15px;
-            color: #000;
-            text-decoration: none;
-        }
-        .sidebar a:hover {
-            background-color: #e9ecef;
-        }
-        .content {
-            padding: 20px;
-        }
-        iframe {
-            width: 100%;
-            height: 500px;
-            border: none;
+        .scrollable {
+            max-height: 400px;
+            overflow-y: auto;
         }
     </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar">
-                <div class="d-flex flex-column">
-                    <h5 class="text-center">Project 1</h5>
-                    <a href="#">Overview</a>
-                    <a href="#">Account</a>
-                    <a href="#">Groups</a>
-                    <a href="#">Manage</a>
-                </div>
-            </nav>
-
-            <!-- Main Content -->
-            <main class="col-md-9 col-lg-10">
-                <div class="content">
-                    <ul class="nav nav-tabs">
-                        <li class="nav-item">
-                            <a class="nav-link" href="#overview" data-bs-toggle="tab">Overview</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="#documents" data-bs-toggle="tab">Documents</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#linked-data" data-bs-toggle="tab">Linked Data</a>
-                        </li>
-                    </ul>
-
-                    <div class="tab-content">
-                        <div class="tab-pane fade" id="overview">
-                            <p>Overview content goes here...</p>
-                        </div>
-                        <div class="tab-pane fade show active" id="documents">
-                            <div class="categories">
-                                <h5>Categories</h5>
-                                <ul class="list-group">
-                                    <li class="list-group-item">
-                                        <a href="#" onclick="loadDocuments()">View PDFs</a>
-                                    </li>
-                                </ul>
-                                <div id="documents-view" class="mt-4">
-                                    <h5>Documents</h5>
-                                    <ul id="documents-list" class="list-group"></ul>
-                                </div>
-                                <div id="document-content-view" class="mt-4">
-                                    <h5>Document Viewer</h5>
-                                    <iframe id="document-viewer" src="" title="PDF Viewer">Your browser does not support iframes.</iframe>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tab-pane fade" id="linked-data">
-                            <p>Linked Data content goes here...</p>
-                        </div>
+    <div>
+        <div>
+            <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                <div class="container-fluid">
+                    <a class="navbar-brand" href="#">Navbar</a>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav">
+                            <li class="nav-item">
+                                <a class="nav-link" href="/">Home</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/aerius">Aerius</a>
+                            </li>
+                        </ul>
                     </div>
                 </div>
-            </main>
+            </nav>
+        </div>
+    </div>
+<div class="container mt-4">
+    <p class="fs-4 fw-bold">RDF Validator</p>
+    <hr />
+
+    <!-- Error Messages -->
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+        <p class="mb-0">{{ error }}</p>
+        {% if error_details %}
+        <hr>
+        <button id="showMoreBtn" class="btn btn-sm btn-outline-danger" onclick="toggleErrorDetails(true)">
+            Show SHACL Report
+        </button>
+        <button id="hideBtn" class="btn btn-sm btn-outline-danger" style="display: none;" onclick="toggleErrorDetails(false)">
+            Hide SHACL Report
+        </button>
+        <pre id="errorDetails" class="mb-0 mt-2" style="display: none;">{{ error_details }}</pre>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success" role="alert">{{ success }}</div>
+    {% endif %}
+    <hr />
+
+    <!-- File Upload -->
+    <p class="fw-semibold">Upload a Turtle File (.ttl)</p>
+    <form method="POST" enctype="multipart/form-data" class="mb-3">
+        <div class="mb-3">
+            <input type="file" class="form-control" name="nen_file" accept=".ttl" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Upload and Validate</button>
+    </form>
+
+    <!-- Uploaded Files -->
+    <div class="mb-4">
+        <h6>Select a File to Process</h6>
+        <form method="POST" action="/" class="mb-3">
+            {% if uploaded_files %}
+            <ul class="list-group">
+                {% for file in uploaded_files %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="form-check">
+                        <input
+                            class="form-check-input"
+                            type="radio"
+                            name="selected_file"
+                            id="file-{{ loop.index }}"
+                            value="{{ file }}"
+                            {% if loop.index == 1 %}checked{% endif %}
+                        >
+                        <label class="form-check-label" for="file-{{ loop.index }}">{{ file }}</label>
+                    </div>
+                    <form method="POST" action="/delete-file" class="d-inline">
+                        <input type="hidden" name="file_name" value="{{ file }}">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            <button type="submit" class="btn btn-secondary mt-3">Process Selected File</button>
+            {% else %}
+            <p>No files uploaded yet.</p>
+            {% endif %}
+        </form>
+    </div>
+
+    <hr />
+
+    <!-- SHACL Constraints -->
+    <div class="mb-4">
+        <h5 class="fw-bold">SHACL Constraints</h5>
+        <div class="scrollable border p-3 rounded">
+            {% for c in shacl_constraint %}
+            <div class="my-3 p-3 border rounded">
+                <h6 class="fw-bold">Constraint #{{ loop.index }}</h6>
+                <p class="text-muted">{{ c.message }}</p>
+                <table class="table table-sm table-bordered">
+                    <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Predicate</th>
+                        <th>Object (missing)</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td><input type="text" class="form-control" value="{{ c.focus_node }}" readonly></td>
+                        <td><input type="text" class="form-control" value="{{ c.result_path }}" readonly></td>
+                        <td><input type="text" class="form-control" placeholder="Enter missing object value..."></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+            {% if shacl_constraint|length == 0 %}
+            <p class="text-muted">No SHACL constraints found or your data conforms.</p>
+            {% endif %}
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function loadDocuments() {
-            fetch('/get_documents/all') // Fetch PDF files
-                .then(response => response.json())
-                .then(data => {
-                    const documentsList = document.getElementById('documents-list');
-                    documentsList.innerHTML = ''; // Clear previous list
+    <!-- Validate and Save Button -->
     
-                    if (data.documents.length === 0) {
-                        documentsList.innerHTML = '<li class="list-group-item">No documents found.</li>';
-                    } else {
-                        data.documents.forEach(doc => {
-                            const li = document.createElement('li');
-                            li.className = 'list-group-item';
-                            li.innerHTML = `<a href="#" onclick="viewDocument('${doc}')">${doc}</a>`;
-                            documentsList.appendChild(li);
-                        });
-                    }
-                })
-                .catch(error => console.error('Error fetching documents:', error));
+    <div class="mb-4">
+        <div class="d-grid">
+            <button type="button" class="btn btn-success">Validate & Save</button>
+        </div>
+    </div>
+
+    <!-- Suggestions -->
+    <div class="mb-4">
+        <h5 class="fw-bold">Suggestions</h5>
+        <p class="text-muted">Suggestions are inferred from existing SHACL constraints.</p>
+        <div class="alert alert-info">
+            <strong>No advanced suggestions are available.</strong>
+        </div>
+    </div>
+
+    <!-- Overview of All SHACL Shapes -->
+    <div class="mb-4">
+        <h5 class="fw-bold">Overview of All SHACL Shapes</h5>
+        <p>A human-readable overview of shapes can be found here:</p>
+        <a href="/shacl-summary" class="btn btn-outline-secondary" target="_blank">Open SHACL Shapes Overview</a>
+    </div>
+
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js"></script>
+<script>
+    function toggleErrorDetails(show) {
+        const errorDetails = document.getElementById('errorDetails');
+        const showMoreBtn = document.getElementById('showMoreBtn');
+        const hideBtn = document.getElementById('hideBtn');
+        if (show) {
+            errorDetails.style.display = 'block';
+            showMoreBtn.style.display = 'none';
+            hideBtn.style.display = 'inline-block';
+        } else {
+            errorDetails.style.display = 'none';
+            showMoreBtn.style.display = 'inline-block';
+            hideBtn.style.display = 'none';
         }
-    
-        function viewDocument(docName) {
-            const viewer = document.getElementById('document-viewer');
-            viewer.src = `/pdf/${docName}`; // Update iframe source to show the selected PDF
-        }
-    </script>
+    }
+</script>
 </body>
 </html>

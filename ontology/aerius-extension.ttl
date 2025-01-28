@@ -1,0 +1,84 @@
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+# NEN ontology prefix (points to your local copy or the official w3id URI)
+@prefix nen:   <http://example.org/graphs/nen2660-ontology#> .
+# AERIUS extension prefix
+@prefix aerius: <http://example.org/graphs/aerius-extension#> .
+
+###############################################################################
+# AERIUS EXTENSION: Classes
+###############################################################################
+# Typically, you'd import or reference the base NEN ontology too:
+# @base <http://example.org/graphs/aerius-extension> .
+
+aerius:EmissionSource a owl:Class ;
+    rdfs:label "Emission Source" ;
+    rdfs:comment "An AERIUS concept: a source of emissions for calculation." ;
+    # For OWL-based inference (optional):
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty aerius:hasEmissionFactor ;
+        owl:someValuesFrom aerius:EmissionFactor
+    ] .
+
+aerius:EmissionFactor a owl:Class ;
+    rdfs:label "Emission Factor" ;
+    rdfs:comment "A factor used in emission calculations (e.g. NOx, NH3 rates)." .
+
+aerius:ConstructionProject a owl:Class ;
+    rdfs:label "Construction Project" ;
+    rdfs:comment "Represents a project that includes Activities and affects Regions." ;
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty aerius:includes ;
+        owl:someValuesFrom nen:Activity
+    ] , [
+        a owl:Restriction ;
+        owl:onProperty aerius:affects ;
+        owl:someValuesFrom nen:SpatialRegion
+    ] .
+
+###############################################################################
+# AERIUS EXTENSION: Properties
+###############################################################################
+# If you want to require that every nen:Activity has an EmissionSource:
+aerius:hasEmissionSource a owl:ObjectProperty ;
+    rdfs:label "has Emission Source" ;
+    rdfs:domain nen:Activity ;
+    rdfs:range aerius:EmissionSource ;
+    rdfs:comment "Links an Activity to its Emission Source(s)." .
+
+aerius:hasEmissionFactor a owl:ObjectProperty ;
+    rdfs:label "has Emission Factor" ;
+    rdfs:domain aerius:EmissionSource ;
+    rdfs:range aerius:EmissionFactor ;
+    rdfs:comment "Links an Emission Source to its Factor (e.g., NOx rate)." .
+
+aerius:includes a owl:ObjectProperty ;
+    rdfs:label "includes" ;
+    rdfs:domain aerius:ConstructionProject ;
+    rdfs:range nen:Activity ;
+    rdfs:comment "Links a project to the Activities it comprises." .
+
+aerius:affects a owl:ObjectProperty ;
+    rdfs:label "affects" ;
+    rdfs:domain aerius:ConstructionProject ;
+    rdfs:range nen:SpatialRegion ;
+    rdfs:comment "Indicates that a project affects certain SpatialRegions." .
+
+###############################################################################
+# OPTIONAL: If you want to require that every nen:Activity has an EmissionSource
+# (uncomment these lines if desired; it means "All nen:Activity must have a
+# aerius:hasEmissionSource to an aerius:EmissionSource"):
+#
+nen:Activity
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty aerius:hasEmissionSource ;
+        owl:someValuesFrom aerius:EmissionSource
+    ] .
+###############################################################################
+

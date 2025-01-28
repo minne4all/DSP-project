@@ -1,0 +1,151 @@
+###############################################################################
+# File: aerius-extension-with-shacl.ttl
+# Named Graph (optional): <http://example.org/graphs/aerius-extension>
+#
+# Purpose:
+#  - Defines AERIUS classes/properties that extend NEN ontology
+#  - Adds SHACL shapes to validate "missing" data (e.g., Emission Sources)
+###############################################################################
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+
+# Base NEN ontology namespace (you may have an official URL or local copy)
+# Here we just define minimal placeholders so this file is self-contained.
+@prefix nen:    <http://example.org/graphs/nen2660-ontology#> .
+
+# AERIUS extension namespace
+@prefix aerius: <http://example.org/graphs/aerius-extension#> .
+
+# A prefix for our SHACL shapes (you can rename or merge into aerius:)
+@prefix ex:     <http://example.org/shapes#> .
+
+###############################################################################
+# NEN CLASSES (Minimal placeholders for demonstration)
+###############################################################################
+nen:PhysicalObject a owl:Class ;
+    rdfs:label "Physical Object" .
+
+nen:Activity a owl:Class ;
+    rdfs:label "Activity" .
+
+nen:SpatialRegion a owl:Class ;
+    rdfs:label "Spatial Region" .
+
+nen:TemporalState a owl:Class ;
+    rdfs:label "Temporal State" .
+
+###############################################################################
+# AERIUS CLASSES
+###############################################################################
+aerius:EmissionSource a owl:Class ;
+    rdfs:label "Emission Source" ;
+    rdfs:comment "Represents a source of emissions in AERIUS." ;
+    # Example: If under OWL2, we can require each EmissionSource has a Factor:
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty aerius:hasEmissionFactor ;
+        owl:someValuesFrom aerius:EmissionFactor
+    ] .
+
+aerius:EmissionFactor a owl:Class ;
+    rdfs:label "Emission Factor" ;
+    rdfs:comment "Represents an emission factor (e.g., NOx, NH3)." .
+
+aerius:ConstructionProject a owl:Class ;
+    rdfs:label "Construction Project" ;
+    rdfs:comment "Represents a project that includes Activities and affects Regions." ;
+    # Example OWL restrictions (only effective if your repo supports OWL):
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty aerius:includes ;
+        owl:someValuesFrom nen:Activity
+    ],
+    [
+        a owl:Restriction ;
+        owl:onProperty aerius:affects ;
+        owl:someValuesFrom nen:SpatialRegion
+    ] .
+
+###############################################################################
+# AERIUS OBJECT PROPERTIES
+###############################################################################
+aerius:hasEmissionSource a owl:ObjectProperty ;
+    rdfs:label "has Emission Source" ;
+    rdfs:comment "Links an Activity to its Emission Source(s)." ;
+    rdfs:domain nen:Activity ;
+    rdfs:range aerius:EmissionSource .
+
+aerius:hasEmissionFactor a owl:ObjectProperty ;
+    rdfs:label "has Emission Factor" ;
+    rdfs:comment "Links an Emission Source to its Factor(s)." ;
+    rdfs:domain aerius:EmissionSource ;
+    rdfs:range aerius:EmissionFactor .
+
+aerius:includes a owl:ObjectProperty ;
+    rdfs:label "includes" ;
+    rdfs:comment "Links a Construction Project to the Activities it comprises." ;
+    rdfs:domain aerius:ConstructionProject ;
+    rdfs:range nen:Activity .
+
+aerius:affects a owl:ObjectProperty ;
+    rdfs:label "affects" ;
+    rdfs:comment "Indicates that a ConstructionProject affects certain SpatialRegions." ;
+    rdfs:domain aerius:ConstructionProject ;
+    rdfs:range nen:SpatialRegion .
+
+###############################################################################
+# OPTIONAL: If you want all nen:Activity to require an aerius:hasEmissionSource
+# in OWL, uncomment below. This only works under an OWL2 ruleset.
+#
+# nen:Activity
+#     rdfs:subClassOf [
+#         a owl:Restriction ;
+#         owl:onProperty aerius:hasEmissionSource ;
+#         owl:someValuesFrom aerius:EmissionSource
+#     ] .
+###############################################################################
+
+###############################################################################
+# SHACL SHAPES
+# We define constraints that produce validation errors if data is missing.
+###############################################################################
+
+# 1) An Activity should have at least 1 Emission Source
+ex:ActivityShape a sh:NodeShape ;
+    sh:targetClass nen:Activity ;
+    sh:property [
+        sh:path aerius:hasEmissionSource ;
+        sh:minCount 1 ;
+        sh:message "Every NEN Activity must have at least one Emission Source for AERIUS."
+    ] .
+
+# 2) An EmissionSource should have at least 1 EmissionFactor
+ex:EmissionSourceShape a sh:NodeShape ;
+    sh:targetClass aerius:EmissionSource ;
+    sh:property [
+        sh:path aerius:hasEmissionFactor ;
+        sh:minCount 1 ;
+        sh:message "Each EmissionSource must have at least one EmissionFactor."
+    ] .
+
+# 3) A ConstructionProject should include at least 1 nen:Activity
+ex:ConstructionProjectShape a sh:NodeShape ;
+    sh:targetClass aerius:ConstructionProject ;
+    sh:property [
+        sh:path aerius:includes ;
+        sh:minCount 1 ;
+        sh:message "A ConstructionProject must include at least one Activity."
+    ] ;
+    sh:property [
+        sh:path aerius:affects ;
+        sh:minCount 1 ;
+        sh:message "A ConstructionProject must affect at least one SpatialRegion."
+    ] .
+
+###############################################################################
+# End of File
+###############################################################################

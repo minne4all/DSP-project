@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Emission Source</title>
+</head>
+<body>
+    <h1>Add an Emission Source</h1>
+    <form method="POST" action="/add_emission_source">
+        <label for="name">Source Name:</label><br>
+        <input type="text" id="name" name="name" placeholder="Enter source name" required><br><br>
+        <label for="fuel_consumption">Fuel Consumption:</label><br>
+        <input type="number" id="fuel_consumption" name="fuel_consumption" step="0.01" placeholder="Fuel consumption (e.g., liters/hour)" required><br><br>
+        <label for="factor_name">Emission Factor Name:</label><br>
+        <input type="text" id="factor_name" name="factor_name" placeholder="Enter factor name" required><br><br>
+        <label for="factor_value">Emission Factor Value:</label><br>
+        <input type="number" id="factor_value" name="factor_value" step="0.01" placeholder="Emission factor value" required><br><br>
+        <button type="submit">Add Emission Source</button>
+    </form>
+    {% if success %}
+        <p style="color: green;">{{ success }}</p>
+    {% endif %}
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+    <a href="/">Back to Home</a>
+</body>
+</html>

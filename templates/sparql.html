@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>SPARQL Query Interface</h1>
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
+{% if success %}
+<div class="success">{{ success }}</div>
+{% endif %}
+
+<form method="post">
+    <textarea name="sparql_query" rows="8" cols="50" placeholder="Enter your SPARQL query here" required></textarea>
+    <button type="submit">Execute Query</button>
+</form>
+
+{% if sparql_results %}
+<h2>Query Results</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Subject</th>
+            <th>Predicate</th>
+            <th>Object</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for result in sparql_results %}
+        <tr>
+            <td>{{ result.subject }}</td>
+            <td>{{ result.predicate }}</td>
+            <td>{{ result.object }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

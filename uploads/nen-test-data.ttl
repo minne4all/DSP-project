@@ -1,0 +1,74 @@
+@prefix nen: <http://example.org/graphs/nen2660-ontology#> .
+@prefix ex:  <http://example.org/test-data#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+###################################################################
+# Suppose we have some base NEN classes/properties:
+#
+# nen:Activity          # declared in the official or local NEN ontology
+# nen:PhysicalObject    # ...
+# nen:SpatialRegion     # ...
+# nen:GeometricEntity   # ...
+# nen:occursDuring      # domain nen:Activity ; range nen:TemporalState
+# nen:involves          # domain nen:Activity ; range nen:PhysicalObject
+# etc.
+###################################################################
+
+# (The user data references only these NEN classes and properties.)
+
+#######################
+# 1) NEN Activity
+#######################
+ex:EarthworksActivity a nen:Activity ;
+    nen:name "Earthworks Phase 1" ;
+    nen:occursDuring ex:EarthworksTimeSpan ;
+    nen:involves ex:Excavator .
+
+# NOTE: There's NO mention of "aerius:hasEmissionSource" here
+# The user hasn't provided it yet—i.e., "missing for AERIUS."
+
+#######################
+# 2) A "PhysicalObject"
+#######################
+ex:Excavator a nen:PhysicalObject ;
+    nen:hasLocation ex:ExcavatorLocation .
+
+ex:ExcavatorLocation a nen:GeometricEntity ;
+    nen:coordinates "POINT(5.45 52.15)" .
+
+#######################
+# 3) A "TemporalState"
+#######################
+ex:EarthworksTimeSpan a nen:TemporalState ;
+    nen:startDate "2026-01-01"^^xsd:date ;
+    nen:endDate   "2026-02-01"^^xsd:date .
+
+#######################
+# 4) A Spatial Region
+#######################
+ex:RegionA a nen:SpatialRegion ;
+    nen:regionType "ProtectedNature" .
+
+#######################
+# 5) A "Project"
+#######################
+# In the pure NEN data, a Project might still be an Activity or something else
+# depending on official NEN definitions. Typically, NEN doesn't define "Project"
+# as a separate class. We'll call it an Activity for simplicity:
+ex:HighwayExpansion a nen:Activity ;
+    nen:name "Highway Expansion Project" ;
+    nen:occursDuring ex:HighwayExpansionTimeSpan ;
+    nen:involves ex:Excavator2 .
+
+ex:HighwayExpansionTimeSpan a nen:TemporalState ;
+    nen:startDate "2026-03-01"^^xsd:date ;
+    nen:endDate   "2026-08-31"^^xsd:date .
+
+ex:Excavator2 a nen:PhysicalObject ;
+    nen:hasLocation ex:AnotherLocation .
+
+ex:AnotherLocation a nen:GeometricEntity ;
+    nen:coordinates "POINT(5.50 52.10)" .
+
+# There's also no mention of "affects" or "includes" from the AERIUS ontology.
+# It's purely "NEN-based" data.
