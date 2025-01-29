@@ -137,43 +137,45 @@
                     {% endfor %}
                 </div>
                 <!-- <button type="button" class="btn btn-secondary mb-3" id="addMobileSource" style="display: flex;">Add Mobile Source</button> -->
-                <button type="submit" class="btn btn-primary">Generate GML</button>
+                <button type="submit" class="btn btn-primary">Start calculation</button>
             </form>
         {% endif %}
     </div>
         
         <!-- Job Status Section -->
-        <div class="mt-5">
+        <div class="container mt-5">
             <h2 class="text-center">Job Status</h2>
             <hr>
-            <table class="table table-striped">
+            <div class="d-flex justify-content-center">
+            <table class="table table-striped w-100">
             <thead>
-                <tr>
+            <tr>
                 <th>Job Key</th>
                 <th>Status</th>
                 <th>Files</th>
-                </tr>
+            </tr>
             </thead>
             <tbody>
-                {% for job_key, job in jobs.items() %}
-                <tr>
+            {% for job_key, job in jobs.items() %}
+            <tr>
                 <td>{{ job_key }}</td>
                 <td>{{ job.status }}</td>
                 <td>
-                    {% if job.files %}
-                    {% for file in job.files %}
-                        <a href="{{ url_for('view_file', folder=job_key, filename=file) }}" target="_blank">{{ file }}</a><br>
-                    {% endfor %}
-                    {% else %}
-                    <form action="{{ url_for('check_status', job_key=job_key) }}" method="GET">
-                        <button type="submit" class="btn btn-secondary btn-sm">Reload Status</button>
-                    </form>
-                    {% endif %}
-                </td>
-                </tr>
+                {% if job.files %}
+                {% for file in job.files %}
+                <a href="{{ url_for('view_file', folder=job_key, filename=file) }}" target="_blank">{{ file }}</a><br>
                 {% endfor %}
+                {% else %}
+                <form action="{{ url_for('check_status', job_key=job_key) }}" method="GET"></form>
+                <button type="submit" class="btn btn-secondary btn-sm">Reload Status</button>
+                </form>
+                {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
             </tbody>
             </table>
+            </div>
         </div>
 
     <script>
