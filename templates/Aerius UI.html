@@ -42,6 +42,21 @@
         {% endif %}
         {% endwith %}
 
+        <!-- File selection -->
+        <form method="GET" class="mb-4">
+            <div class="mb-3">
+                <label for="ontology_file" class="form-label">Select a File:</label>
+                <select id="ontology_file" name="ontology_file" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Select a File --</option>
+                    {% for file in ontology_files %}
+                        <option value="{{ file }}" {% if file == selected_ontology %}selected{% endif %}>
+                            {{ file }}
+                        </option>
+                    {% endfor %}
+                    </select>
+            </div>
+         </form>
+
         <!-- Project Selection -->
         <form method="GET" class="mb-4">
             <div class="mb-3">
@@ -72,7 +87,7 @@
                     </div>
                 </div>
 
-                <div class="mb-4">
+                <div class="mb-4" id="mobileSourcesContainer">
                     <h2>Mobile Sources</h2>
                     {% for source in form_data.mobile_sources %}
                         <fieldset class="border p-3 mb-3 bg-white rounded">
@@ -136,141 +151,47 @@
                         </fieldset>
                     {% endfor %}
                 </div>
-                <button type="button" class="btn btn-secondary mb-3" id="addMobileSource" style="display: flex;">Add Mobile Source</button>
-                <button type="submit" class="btn btn-primary">Generate GML</button>
+                <!-- <button type="button" class="btn btn-secondary mb-3" id="addMobileSource" style="display: flex;">Add Mobile Source</button> -->
+                <button type="submit" class="btn btn-primary">Start calculation</button>
             </form>
         {% endif %}
     </div>
         
-        <form method="POST" class="mb-5">
-            <div class="mb-3">
-                <label for="name" class="form-label">Project Name:</label>
-                <input type="text" class="form-control" id="name" name="name" required>
-            </div>
-
-            <div class="mb-3">
-                <label for="year" class="form-label">Year:</label>
-                <input type="number" class="form-control" id="year" name="year" required>
-            </div>
-
-            <div id="mobileSourcesContainer">
-                <h4>Mobile Sources</h4>
-            </div>
-            <button type="button" class="btn btn-secondary mb-3" id="addMobileSource" style="display: flex;">Add Mobile Source</button>
-
-            <button type="submit" class="btn btn-primary">Generate and Submit GML</button>
-        </form>
-        
         <!-- Job Status Section -->
-        <h2>Job Status</h2>
-        <table class="table table-striped">
+        <div class="container mt-5">
+            <h2 class="text-center">Job Status</h2>
+            <hr>
+            <div class="d-flex justify-content-center">
+            <table class="table table-striped w-100">
             <thead>
-                <tr>
-                    <th>Job Key</th>
-                    <th>Status</th>
-                    <th>Files</th>
-                </tr>
+            <tr>
+                <th>Job</th>
+                <th>Status</th>
+                <th>Files</th>
+            </tr>
             </thead>
             <tbody>
-                {% for job_key, job in jobs.items() %}
-                <tr>
-                    <td>{{ job_key }}</td>
-                    <td>{{ job.status }}</td>
-                    <td>
-                        {% if job.files %}
-                            {% for file in job.files %}
-                            <a href="{{ url_for('view_file', folder=job_key, filename=file) }}" target="_blank">{{ file }}</a><br>
-                            {% endfor %}
-                        {% else %}
-                        <form action="{{ url_for('check_status', job_key=job_key) }}" method="GET">
-                            <button type="submit">Reload Status</button>
-                        </form>
-                        {% endif %}
-                    </td>
-                </tr>
+            {% for job_key, job in jobs.items() %}
+            <tr>
+                <td>{{ job.name }}</td>
+                <td>{{ job.status }}</td>
+                <td>
+                {% if job.files %}
+                {% for file in job.files %}
+                <a href="{{ url_for('view_file', folder=job_key, filename=file) }}" target="_blank">{{ file }}</a><br>
                 {% endfor %}
+                {% else %}
+                <form action="{{ url_for('check_status', job_key=job_key, job_name=job.name) }}" method="GET">
+                <button type="submit" class="btn btn-secondary btn-sm">Reload Status</button>
+                </form>
+                {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
             </tbody>
-        </table>
-    </div>
-
-    <script>
-        // Add dynamic mobile source inputs
-        const addMobileSourceButton = document.getElementById('addMobileSource');
-        const mobileSourcesContainer = document.getElementById('mobileSourcesContainer');
-        let mobileSourceCount = 0;
-
-        addMobileSourceButton.addEventListener('click', () => {
-            const mobileSourceDiv = document.createElement('div');
-            mobileSourceDiv.classList.add('border', 'p-3', 'mb-3');
-            mobileSourceDiv.innerHTML = `
-                <h4>Mobile Source #${mobileSourceCount + 1}</h4>
-                <div class="mb-3">
-                    <label for="mosolabel_${mobileSourceCount}" class="form-label">Label:</label>
-                    <input type="text" class="form-control" name="mosolabel_${mobileSourceCount}" required>
-                </div>
-                <div class="mb-3">
-                    <label for="mosoposition_${mobileSourceCount}" class="form-label">Position:</label>
-                    <input type="text" class="form-control" name="mosoposition_${mobileSourceCount}" required>
-                </div>
-                <div class="mb-3">
-                    <label for="sectorid_${mobileSourceCount}" class="form-label">Sector ID:</label>
-                    <select class="form-select" name="sectorid_${mobileSourceCount}" required>
-                        <option value="3210">Landbouw</option>
-                        <option value="3220">Bouw, Industrie en Delfstoffenwinning</option>
-                        <option value="3530">Consumenten mobiele werktuigen</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label>Emissions (kg):</label>
-                    <input type="number" class="form-control mb-1" name="NH3_${mobileSourceCount}" placeholder="NH3 (kg)" required>
-                    <input type="number" class="form-control mb-1" name="NOX_${mobileSourceCount}" placeholder="NOX (kg)" required>
-                    <input type="number" class="form-control mb-1" name="PM10_${mobileSourceCount}" placeholder="PM10 (kg)" required>
-                    <input type="number" class="form-control mb-1" name="NO2_${mobileSourceCount}" placeholder="NO2 (kg)" required>
-                </div>
-                <div id="specificSourcesContainer_${mobileSourceCount}">
-                    <h5>Specific Mobile Sources</h5>
-                </div>
-                <button type="button" class="btn btn-outline-secondary mb-3 addSpecificSource" data-source-index="${mobileSourceCount}">Add Specific Mobile Source</button>
-            `;
-            mobileSourcesContainer.appendChild(mobileSourceDiv);
-
-            // Add event listener for adding specific sources
-            const addSpecificSourceButtons = document.querySelectorAll('.addSpecificSource');
-            addSpecificSourceButtons.forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const sourceIndex = e.target.dataset.sourceIndex;
-                    const specificSourcesContainer = document.getElementById(`specificSourcesContainer_${sourceIndex}`);
-                    const specificSourceCount = specificSourcesContainer.childElementCount;
-
-                    const specificSourceDiv = document.createElement('div');
-                    specificSourceDiv.classList.add('border', 'p-2', 'mb-2');
-                    specificSourceDiv.innerHTML = `
-                        <h6>Specific Mobile Source #${specificSourceCount + 1}</h6>
-                        <div class="mb-3">
-                            <label for="description_${sourceIndex}_${specificSourceCount}" class="form-label">Description:</label>
-                            <input type="text" class="form-control" name="description_${sourceIndex}_${specificSourceCount}" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="mobtype_${sourceIndex}_${specificSourceCount}" class="form-label">Mobile Type:</label>
-                            <select class="form-select" name="mobtype_${sourceIndex}_${specificSourceCount}" required>
-                                <option value="B2T">Alle werktuigen op benzine, 2takt</option>
-                                <option value="B4T">Alle werktuigen op benzine, 4akt</option>
-                                <option value="LPG">Alle werktuigen op LPG</option>
-                                <option value="MUT">Middelzware utiliteitsvoertuigen op diesel</option>
-                                <option value="ZUT">Zware utiliteitsvoertuigen op diesel</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="fuelyear_${sourceIndex}_${specificSourceCount}" class="form-label">Fuel Use or Hours per Year:</label>
-                            <input type="number" class="form-control" name="fuelyear_${sourceIndex}_${specificSourceCount}" required>
-                        </div>
-                    `;
-                    specificSourcesContainer.appendChild(specificSourceDiv);
-                });
-            });
-
-            mobileSourceCount++;
-        });
-    </script>
+            </table>
+            </div>
+        </div>
+    
 </body>
 </html>

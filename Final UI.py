@@ -22,8 +22,8 @@ SPARQL_UPDATE_ENDPOINT = f"{GRAPHDB_BASE_URL}/repositories/{REPOSITORY_NAME}/sta
 SHAPES_FILE_PATH = "shapes/shacl-shapes.ttl"
 
 #Configuration for the AERIUS API
-UPLOAD_FOLDER = "outputs"
-RESULT_FOLDER = "results"
+UPLOAD_FOLDER = "gml outputs"
+RESULT_FOLDER = "aerius results"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
@@ -34,16 +34,16 @@ API_KEY = "acca4ef0301a4f019b7a6bc99e6781d4"
 jobs = {}
 
 # Load templates
-with open('./template gml/featurecollection.gml', 'r') as file:
+with open('./gml templates/featurecollection.gml', 'r') as file:
     featcoll = file.read()
 
-with open('./template gml/mobile source.gml', 'r') as file:
+with open('./gml templates/mobile source.gml', 'r') as file:
     moso = file.read()
 
-with open('./template gml/specmobsource.gml', 'r') as file:
+with open('./gml templates/specmobsource.gml', 'r') as file:
     specmob = file.read()
 
-with open('./template gml/calcpoint.gml', 'r') as file:
+with open('./gml templates/calcpoint.gml', 'r') as file:
     calcpoint = file.read()
 
 
@@ -162,7 +162,6 @@ def validate_and_extract_constraints(data_graph):
 def fill_template(template, **kwargs):
     return template.format(**kwargs)
 
-
 def start_calculation(filepath):
     options = {
         "name": "Nitrogen Deposition Calculation",
@@ -207,7 +206,6 @@ def retrieve_job_result(job_key):
     if response.status_code == 200:
         return response.json()
     return None
-
 
 def extract_zip(zip_path, extract_to):
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
@@ -281,6 +279,7 @@ def generate_gml_from_form_data(form_data):
     metadata = {"name": form_data["name"], "year": form_data["year"], "featuremembers": featuremembers}
 
     return fill_template(featcoll, **metadata)
+
 
 #App routes for Shacl
 @app.route("/", methods=["GET", "POST"])
@@ -595,13 +594,24 @@ def update_triples():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-# "./ontology/aerius-extension2.ttl"
+
 #App routes for AERIUS API
 @app.route('/aerius', methods=['GET', 'POST'])
 def aerius():
-    ontology_path = "./ontology/aerius-extension2.ttl"
-    g = rdflib.Graph()
-    g.parse(ontology_path, format="turtle")
+    projectfoler = "./project files"
+    ontology_files = [f for f in os.listdir(projectfoler) if f.endswith(".ttl")]
+    selected_ontology = request.args.get("ontology_file", ontology_files[0] if ontology_files else None)
+
+    if selected_ontology:
+        ontology_path = os.path.join(projectfoler, selected_ontology)
+    else:
+        ontology_path = None
+
+    if ontology_path:
+        g = rdflib.Graph()
+        g.parse(ontology_path, format="turtle")
+    else:
+        g = rdflib.Graph()
 
     # Extract all available projects
     projects = []
@@ -693,20 +703,17 @@ def aerius():
         # Start calculation
         job_key = start_calculation(output_path)
         if job_key:
-            jobs[job_key] = {"status": "running", "files": []}
+            jobs[job_key] = {"status": "RUNNING", "files": [], "name": form_data["name"]}
             flash("Calculation started. Job key added to status section.")
         else:
             flash("Failed to start the calculation.")
 
         return redirect(url_for('aerius'))
 
-    return render_template('combined_ui.html', projects=projects, selected_project=selected_project, form_data=form_data, jobs=jobs)
+    return render_template('Aerius UI.html', projects=projects, selected_project=selected_project, form_data=form_data, jobs=jobs, ontology_files=ontology_files, selected_ontology=selected_ontology)
 
-
-
-
-@app.route('/aerius/check_status/<job_key>', methods=['GET'])
-def check_status(job_key):
+@app.route('/aerius/check_status/<job_key>/<job_name>', methods=['GET'])
+def check_status(job_key, job_name):
     job_info = retrieve_job_result(job_key)
     if job_info:
         if job_info.get("status") == "COMPLETED":
@@ -722,7 +729,7 @@ def check_status(job_key):
                 extract_zip(zip_path, extract_to)
                 
                 pdf_files = [f for f in os.listdir(extract_to) if f.endswith('.pdf')]
-                jobs[job_key] = {"status": "completed", "files": pdf_files, "folder": job_key}
+                jobs[job_key] = {"status": "completed", "files": pdf_files, "folder": job_key, "name": job_name}
         else:
             jobs[job_key]["status"] = job_info.get("status", "unknown")
     return redirect(url_for('aerius'))
