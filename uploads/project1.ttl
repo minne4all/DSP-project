@@ -1,0 +1,82 @@
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix nen:   <http://example.org/graphs/nen2660-ontology#> .
+@prefix aerius: <http://example.org/graphs/aerius-extension#> .
+@prefix : <http://example.org/graphs/example-projects#> .
+
+# Example projects
+# Project 1: Urban Highway Expansion
+:Project1 a aerius:ConstructionProject ;
+    rdfs:label "Urban Highway Expansion" ;
+    aerius:includes :Activity1, :Activity2 ;
+    aerius:affects :Region1 ; .
+
+:Activity1 a nen:Activity ;
+    rdfs:label "Excavation for Highway Foundation" ;
+    aerius:hasEmissionSource :MobileSource1, :MobileSource2 ; .
+
+:MobileSource1 a aerius:MobileSource ;
+    aerius:mosolabel "Excavator" ;
+    aerius:mosoposition "138238.12121234321 474076.25637847502" ;
+    aerius:sectorid "3220" ;
+    aerius:emitsNH3 "18.0"^^xsd:decimal ;
+    aerius:emitsNOX "40.0"^^xsd:decimal ;
+    aerius:emitsPM10 "9.0"^^xsd:decimal ;
+    aerius:emitsNO2 "14.0"^^xsd:decimal ;
+    aerius:hasSpecificMobileSource :SpecificSource1 ; .
+
+:SpecificSource1 a aerius:SpecificMobileSource ;
+    aerius:mobtype "B4T" ;
+    aerius:fuelyear "1300"^^xsd:integer ;
+    aerius:description "Large excavator used for excavation of highway foundation." ; .
+
+:MobileSource2 a aerius:MobileSource ;
+    aerius:mosolabel "Dump Truck" ;
+    aerius:mosoposition "138238.12250001235 474077.25900123456" ;
+    aerius:sectorid "3210" ;
+    aerius:emitsNH3 "10.0"^^xsd:decimal ;
+    aerius:emitsNOX "30.0"^^xsd:decimal ;
+    aerius:emitsPM10 "5.0"^^xsd:decimal ;
+    aerius:emitsNO2 "8.0"^^xsd:decimal ;
+    aerius:hasSpecificMobileSource :SpecificSource2 ; .
+
+:SpecificSource2 a aerius:SpecificMobileSource ;
+    aerius:mobtype "LPG" ;
+    aerius:fuelyear "1000"^^xsd:integer ;
+    aerius:description "Dump truck for transporting excavated material." ; .
+
+:Activity2 a nen:Activity ;
+    rdfs:label "Paving of New Highway Lanes" ;
+    aerius:hasEmissionSource :MobileSource3, :MobileSource4 ; .
+
+:MobileSource3 a aerius:MobileSource ;
+    aerius:mosolabel "Asphalt Paver" ;
+    aerius:mosoposition "138240.12763487521 474080.26347891012" ;
+    aerius:sectorid "3530" ;
+    aerius:emitsNH3 "12.0"^^xsd:decimal ;
+    aerius:emitsNOX "45.0"^^xsd:decimal ;
+    aerius:emitsPM10 "8.0"^^xsd:decimal ;
+    aerius:emitsNO2 "18.0"^^xsd:decimal ;
+    aerius:hasSpecificMobileSource :SpecificSource3 ; .
+
+:SpecificSource3 a aerius:SpecificMobileSource ;
+    aerius:mobtype "B2T" ;
+    aerius:fuelyear "1400"^^xsd:integer ;
+    aerius:description "Asphalt paver for laying down new surface on highway." ; .
+
+:MobileSource4 a aerius:MobileSource ;
+    aerius:mosolabel "Road Roller" ;
+    aerius:mosoposition "138241.12845329012 474082.26567843845" ;
+    aerius:sectorid "3220" ;
+    aerius:emitsNH3 "8.0"^^xsd:decimal ;
+    aerius:emitsNOX "35.0"^^xsd:decimal ;
+    aerius:emitsPM10 "6.0"^^xsd:decimal ;
+    aerius:emitsNO2 "10.0"^^xsd:decimal ;
+    aerius:hasSpecificMobileSource :SpecificSource4 ; .
+
+:SpecificSource4 a aerius:SpecificMobileSource ;
+    aerius:mobtype "MUT" ;
+    aerius:fuelyear "900"^^xsd:integer ;
+    aerius:description "Road roller for compacting newly paved lanes." ; .

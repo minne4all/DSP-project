@@ -1,6 +1,8 @@
 @prefix nen: <http://example.org/graphs/nen2660-ontology#> .
 @prefix ex:  <http://example.org/test-data#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix aerius: <http://example.org/graphs/aerius-extension#> .
+
 
 ###################################################################
 # Suppose we have some base NEN classes/properties:

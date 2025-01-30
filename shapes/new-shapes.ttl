@@ -1,0 +1,115 @@
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix nen:  <http://example.org/graphs/nen2660-ontology#> .
+@prefix aerius: <http://example.org/graphs/aerius-extension#> .
+@prefix : <http://example.org/graphs/example-projects#> .
+
+# Shape for Project
+:ConstructionProjectShape
+    a sh:NodeShape ;
+    sh:targetClass aerius:ConstructionProject ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aerius:includes ;
+        sh:class nen:Activity ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aerius:affects ;
+        sh:class nen:Region ;
+        sh:minCount 1 ;
+    ] .
+
+# Shape for Activity
+:ActivityShape
+    a sh:NodeShape ;
+    sh:targetClass nen:Activity ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aerius:hasEmissionSource ;
+        sh:class aerius:MobileSource ;
+        sh:minCount 1 ;
+    ] .
+
+# Shape for Mobile Source
+:MobileSourceShape
+    a sh:NodeShape ;
+    sh:targetClass aerius:MobileSource ;
+    sh:property [
+        sh:path aerius:mosolabel ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aerius:mosoposition ;
+        sh:datatype xsd:string ; # Could be more precise if it's a spatial datatype
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aerius:sectorid ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aerius:emitsNH3 ;
+        sh:datatype xsd:decimal ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aerius:emitsNOX ;
+        sh:datatype xsd:decimal ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aerius:emitsPM10 ;
+        sh:datatype xsd:decimal ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aerius:emitsNO2 ;
+        sh:datatype xsd:decimal ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aerius:hasSpecificMobileSource ;
+        sh:class aerius:SpecificMobileSource ;
+        sh:minCount 1 ;
+    ] .
+
+# Shape for Specific Mobile Source
+:SpecificMobileSourceShape
+    a sh:NodeShape ;
+    sh:targetClass aerius:SpecificMobileSource ;
+    sh:property [
+        sh:path aerius:mobtype ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aerius:fuelyear ;
+        sh:datatype xsd:integer ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path aerius:description ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] .

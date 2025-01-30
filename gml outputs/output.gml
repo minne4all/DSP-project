@@ -12,7 +12,7 @@
             </imaer:project>
             <imaer:situation>
                 <imaer:SituationMetadata>
-                    <imaer:name>Bridge Reconstruction Over River</imaer:name>
+                    <imaer:name>Urban Highway Expansion</imaer:name>
                     <imaer:reference>Rxa7Z4h3L1Cx</imaer:reference>
                     <imaer:situationType>PROPOSED</imaer:situationType>
                 </imaer:SituationMetadata>
@@ -33,40 +33,40 @@
                 <imaer:localId>ES.1</imaer:localId>
             </imaer:NEN3610ID>
         </imaer:identifier>
-        <imaer:label>Demolition Excavator</imaer:label>
+        <imaer:label>Excavator</imaer:label>
         <imaer:geometry>
             <imaer:EmissionSourceGeometry>
                 <imaer:GM_Point>
                     <gml:Point srsName="urn:ogc:def:crs:EPSG::28992" gml:id="ES.1.POINT">
-                        <gml:pos>138230.11889922134 474050.24587658900</gml:pos>
+                        <gml:pos>138238.12121234321 474076.25637847502</gml:pos>
                     </gml:Point>
                 </imaer:GM_Point>
             </imaer:EmissionSourceGeometry>
         </imaer:geometry>
         <imaer:emission>
             <imaer:Emission substance="NH3">
-                <imaer:value>10.0</imaer:value>
+                <imaer:value>18.0</imaer:value>
             </imaer:Emission>
         </imaer:emission>
         <imaer:emission>
             <imaer:Emission substance="NOX">
-                <imaer:value>25.0</imaer:value>
+                <imaer:value>40.0</imaer:value>
             </imaer:Emission>
         </imaer:emission>
         <imaer:emission>
             <imaer:Emission substance="PM10">
-                <imaer:value>8.0</imaer:value>
+                <imaer:value>9.0</imaer:value>
             </imaer:Emission>
         </imaer:emission>
         <imaer:emission>
             <imaer:Emission substance="NO2">
-                <imaer:value>12.0</imaer:value>
+                <imaer:value>14.0</imaer:value>
             </imaer:Emission>
         </imaer:emission>
         <imaer:offRoadMobileSource>
-    <imaer:StandardOffRoadMobileSource offRoadMobileSourceType="ZUT">
-        <imaer:description>Excavator used for demolishing old bridge structure.</imaer:description>
-        <imaer:operatingHoursPerYear>1100</imaer:operatingHoursPerYear>
+    <imaer:StandardOffRoadMobileSource offRoadMobileSourceType="B4T">
+        <imaer:description>Large excavator used for excavation of highway foundation.</imaer:description>
+        <imaer:literFuelPerYear>1300</imaer:literFuelPerYear>
     </imaer:StandardOffRoadMobileSource>
 </imaer:offRoadMobileSource>
         </imaer:OffRoadMobileSourceEmissionSource>
@@ -78,109 +78,19 @@
                 <imaer:localId>ES.2</imaer:localId>
             </imaer:NEN3610ID>
         </imaer:identifier>
-        <imaer:label>Crane</imaer:label>
+        <imaer:label>Dump Truck</imaer:label>
         <imaer:geometry>
             <imaer:EmissionSourceGeometry>
                 <imaer:GM_Point>
                     <gml:Point srsName="urn:ogc:def:crs:EPSG::28992" gml:id="ES.2.POINT">
-                        <gml:pos>138231.11913450734 474052.24784565842</gml:pos>
+                        <gml:pos>138238.12250001235 474077.25900123456</gml:pos>
                     </gml:Point>
                 </imaer:GM_Point>
             </imaer:EmissionSourceGeometry>
         </imaer:geometry>
         <imaer:emission>
             <imaer:Emission substance="NH3">
-                <imaer:value>5.0</imaer:value>
-            </imaer:Emission>
-        </imaer:emission>
-        <imaer:emission>
-            <imaer:Emission substance="NOX">
-                <imaer:value>20.0</imaer:value>
-            </imaer:Emission>
-        </imaer:emission>
-        <imaer:emission>
-            <imaer:Emission substance="PM10">
-                <imaer:value>7.0</imaer:value>
-            </imaer:Emission>
-        </imaer:emission>
-        <imaer:emission>
-            <imaer:Emission substance="NO2">
                 <imaer:value>10.0</imaer:value>
-            </imaer:Emission>
-        </imaer:emission>
-        <imaer:offRoadMobileSource>
-    <imaer:StandardOffRoadMobileSource offRoadMobileSourceType="B4T">
-        <imaer:description>Crane used for lifting bridge debris.</imaer:description>
-        <imaer:literFuelPerYear>1200</imaer:literFuelPerYear>
-    </imaer:StandardOffRoadMobileSource>
-</imaer:offRoadMobileSource>
-        </imaer:OffRoadMobileSourceEmissionSource>
-</imaer:featureMember><imaer:featureMember>
-    <imaer:OffRoadMobileSourceEmissionSource sectorId="3210" gml:id="ES.3">
-        <imaer:identifier>
-            <imaer:NEN3610ID>
-                <imaer:namespace>NL.IMAER</imaer:namespace>
-                <imaer:localId>ES.3</imaer:localId>
-            </imaer:NEN3610ID>
-        </imaer:identifier>
-        <imaer:label>Concrete Pump</imaer:label>
-        <imaer:geometry>
-            <imaer:EmissionSourceGeometry>
-                <imaer:GM_Point>
-                    <gml:Point srsName="urn:ogc:def:crs:EPSG::28992" gml:id="ES.3.POINT">
-                        <gml:pos>138232.11976543312 474054.24934219023</gml:pos>
-                    </gml:Point>
-                </imaer:GM_Point>
-            </imaer:EmissionSourceGeometry>
-        </imaer:geometry>
-        <imaer:emission>
-            <imaer:Emission substance="NH3">
-                <imaer:value>7.0</imaer:value>
-            </imaer:Emission>
-        </imaer:emission>
-        <imaer:emission>
-            <imaer:Emission substance="NOX">
-                <imaer:value>28.0</imaer:value>
-            </imaer:Emission>
-        </imaer:emission>
-        <imaer:emission>
-            <imaer:Emission substance="PM10">
-                <imaer:value>6.0</imaer:value>
-            </imaer:Emission>
-        </imaer:emission>
-        <imaer:emission>
-            <imaer:Emission substance="NO2">
-                <imaer:value>11.0</imaer:value>
-            </imaer:Emission>
-        </imaer:emission>
-        <imaer:offRoadMobileSource>
-    <imaer:StandardOffRoadMobileSource offRoadMobileSourceType="B2T">
-        <imaer:description>Concrete pump for placing concrete in bridge construction.</imaer:description>
-        <imaer:literFuelPerYear>1300</imaer:literFuelPerYear>
-    </imaer:StandardOffRoadMobileSource>
-</imaer:offRoadMobileSource>
-        </imaer:OffRoadMobileSourceEmissionSource>
-</imaer:featureMember><imaer:featureMember>
-    <imaer:OffRoadMobileSourceEmissionSource sectorId="3210" gml:id="ES.4">
-        <imaer:identifier>
-            <imaer:NEN3610ID>
-                <imaer:namespace>NL.IMAER</imaer:namespace>
-                <imaer:localId>ES.4</imaer:localId>
-            </imaer:NEN3610ID>
-        </imaer:identifier>
-        <imaer:label>Masonry Lifting Crane</imaer:label>
-        <imaer:geometry>
-            <imaer:EmissionSourceGeometry>
-                <imaer:GM_Point>
-                    <gml:Point srsName="urn:ogc:def:crs:EPSG::28992" gml:id="ES.4.POINT">
-                        <gml:pos>138233.12045637455 474056.25100256873</gml:pos>
-                    </gml:Point>
-                </imaer:GM_Point>
-            </imaer:EmissionSourceGeometry>
-        </imaer:geometry>
-        <imaer:emission>
-            <imaer:Emission substance="NH3">
-                <imaer:value>6.0</imaer:value>
             </imaer:Emission>
         </imaer:emission>
         <imaer:emission>
@@ -195,13 +105,103 @@
         </imaer:emission>
         <imaer:emission>
             <imaer:Emission substance="NO2">
-                <imaer:value>9.0</imaer:value>
+                <imaer:value>8.0</imaer:value>
+            </imaer:Emission>
+        </imaer:emission>
+        <imaer:offRoadMobileSource>
+    <imaer:StandardOffRoadMobileSource offRoadMobileSourceType="LPG">
+        <imaer:description>Dump truck for transporting excavated material.</imaer:description>
+        <imaer:literFuelPerYear>1000</imaer:literFuelPerYear>
+    </imaer:StandardOffRoadMobileSource>
+</imaer:offRoadMobileSource>
+        </imaer:OffRoadMobileSourceEmissionSource>
+</imaer:featureMember><imaer:featureMember>
+    <imaer:OffRoadMobileSourceEmissionSource sectorId="3210" gml:id="ES.3">
+        <imaer:identifier>
+            <imaer:NEN3610ID>
+                <imaer:namespace>NL.IMAER</imaer:namespace>
+                <imaer:localId>ES.3</imaer:localId>
+            </imaer:NEN3610ID>
+        </imaer:identifier>
+        <imaer:label>Asphalt Paver</imaer:label>
+        <imaer:geometry>
+            <imaer:EmissionSourceGeometry>
+                <imaer:GM_Point>
+                    <gml:Point srsName="urn:ogc:def:crs:EPSG::28992" gml:id="ES.3.POINT">
+                        <gml:pos>138240.12763487521 474080.26347891012</gml:pos>
+                    </gml:Point>
+                </imaer:GM_Point>
+            </imaer:EmissionSourceGeometry>
+        </imaer:geometry>
+        <imaer:emission>
+            <imaer:Emission substance="NH3">
+                <imaer:value>12.0</imaer:value>
+            </imaer:Emission>
+        </imaer:emission>
+        <imaer:emission>
+            <imaer:Emission substance="NOX">
+                <imaer:value>45.0</imaer:value>
+            </imaer:Emission>
+        </imaer:emission>
+        <imaer:emission>
+            <imaer:Emission substance="PM10">
+                <imaer:value>8.0</imaer:value>
+            </imaer:Emission>
+        </imaer:emission>
+        <imaer:emission>
+            <imaer:Emission substance="NO2">
+                <imaer:value>18.0</imaer:value>
+            </imaer:Emission>
+        </imaer:emission>
+        <imaer:offRoadMobileSource>
+    <imaer:StandardOffRoadMobileSource offRoadMobileSourceType="B2T">
+        <imaer:description>Asphalt paver for laying down new surface on highway.</imaer:description>
+        <imaer:literFuelPerYear>1400</imaer:literFuelPerYear>
+    </imaer:StandardOffRoadMobileSource>
+</imaer:offRoadMobileSource>
+        </imaer:OffRoadMobileSourceEmissionSource>
+</imaer:featureMember><imaer:featureMember>
+    <imaer:OffRoadMobileSourceEmissionSource sectorId="3210" gml:id="ES.4">
+        <imaer:identifier>
+            <imaer:NEN3610ID>
+                <imaer:namespace>NL.IMAER</imaer:namespace>
+                <imaer:localId>ES.4</imaer:localId>
+            </imaer:NEN3610ID>
+        </imaer:identifier>
+        <imaer:label>Road Roller</imaer:label>
+        <imaer:geometry>
+            <imaer:EmissionSourceGeometry>
+                <imaer:GM_Point>
+                    <gml:Point srsName="urn:ogc:def:crs:EPSG::28992" gml:id="ES.4.POINT">
+                        <gml:pos>138241.12845329012 474082.26567843845</gml:pos>
+                    </gml:Point>
+                </imaer:GM_Point>
+            </imaer:EmissionSourceGeometry>
+        </imaer:geometry>
+        <imaer:emission>
+            <imaer:Emission substance="NH3">
+                <imaer:value>8.0</imaer:value>
+            </imaer:Emission>
+        </imaer:emission>
+        <imaer:emission>
+            <imaer:Emission substance="NOX">
+                <imaer:value>35.0</imaer:value>
+            </imaer:Emission>
+        </imaer:emission>
+        <imaer:emission>
+            <imaer:Emission substance="PM10">
+                <imaer:value>6.0</imaer:value>
+            </imaer:Emission>
+        </imaer:emission>
+        <imaer:emission>
+            <imaer:Emission substance="NO2">
+                <imaer:value>10.0</imaer:value>
             </imaer:Emission>
         </imaer:emission>
         <imaer:offRoadMobileSource>
     <imaer:StandardOffRoadMobileSource offRoadMobileSourceType="MUT">
-        <imaer:description>Crane used for lifting masonry blocks during bridge construction.</imaer:description>
-        <imaer:operatingHoursPerYear>1400</imaer:operatingHoursPerYear>
+        <imaer:description>Road roller for compacting newly paved lanes.</imaer:description>
+        <imaer:operatingHoursPerYear>900</imaer:operatingHoursPerYear>
     </imaer:StandardOffRoadMobileSource>
 </imaer:offRoadMobileSource>
         </imaer:OffRoadMobileSourceEmissionSource>

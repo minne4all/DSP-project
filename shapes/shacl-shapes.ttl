@@ -1,151 +1,156 @@
-###############################################################################
-# File: aerius-extension-with-shacl.ttl
-# Named Graph (optional): <http://example.org/graphs/aerius-extension>
-#
-# Purpose:
-#  - Defines AERIUS classes/properties that extend NEN ontology
-#  - Adds SHACL shapes to validate "missing" data (e.g., Emission Sources)
-###############################################################################
-
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix owl:    <http://www.w3.org/2002/07/owl#> .
 @prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
 @prefix sh:     <http://www.w3.org/ns/shacl#> .
-
-# Base NEN ontology namespace (you may have an official URL or local copy)
-# Here we just define minimal placeholders so this file is self-contained.
-@prefix nen:    <http://example.org/graphs/nen2660-ontology#> .
-
-# AERIUS extension namespace
 @prefix aerius: <http://example.org/graphs/aerius-extension#> .
-
-# A prefix for our SHACL shapes (you can rename or merge into aerius:)
+@prefix nen:    <http://example.org/graphs/nen2660-ontology#> .
 @prefix ex:     <http://example.org/shapes#> .
 
-###############################################################################
-# NEN CLASSES (Minimal placeholders for demonstration)
-###############################################################################
-nen:PhysicalObject a owl:Class ;
-    rdfs:label "Physical Object" .
+################################################################################
+# EXTENDED SHACL SHAPES FOR AERIUS + NEN
+# (Adjusted to match your RDF data exactly)
+################################################################################
 
-nen:Activity a owl:Class ;
-    rdfs:label "Activity" .
-
-nen:SpatialRegion a owl:Class ;
-    rdfs:label "Spatial Region" .
-
-nen:TemporalState a owl:Class ;
-    rdfs:label "Temporal State" .
-
-###############################################################################
-# AERIUS CLASSES
-###############################################################################
-aerius:EmissionSource a owl:Class ;
-    rdfs:label "Emission Source" ;
-    rdfs:comment "Represents a source of emissions in AERIUS." ;
-    # Example: If under OWL2, we can require each EmissionSource has a Factor:
-    rdfs:subClassOf [
-        a owl:Restriction ;
-        owl:onProperty aerius:hasEmissionFactor ;
-        owl:someValuesFrom aerius:EmissionFactor
-    ] .
-
-aerius:EmissionFactor a owl:Class ;
-    rdfs:label "Emission Factor" ;
-    rdfs:comment "Represents an emission factor (e.g., NOx, NH3)." .
-
-aerius:ConstructionProject a owl:Class ;
-    rdfs:label "Construction Project" ;
-    rdfs:comment "Represents a project that includes Activities and affects Regions." ;
-    # Example OWL restrictions (only effective if your repo supports OWL):
-    rdfs:subClassOf [
-        a owl:Restriction ;
-        owl:onProperty aerius:includes ;
-        owl:someValuesFrom nen:Activity
-    ],
-    [
-        a owl:Restriction ;
-        owl:onProperty aerius:affects ;
-        owl:someValuesFrom nen:SpatialRegion
-    ] .
-
-###############################################################################
-# AERIUS OBJECT PROPERTIES
-###############################################################################
-aerius:hasEmissionSource a owl:ObjectProperty ;
-    rdfs:label "has Emission Source" ;
-    rdfs:comment "Links an Activity to its Emission Source(s)." ;
-    rdfs:domain nen:Activity ;
-    rdfs:range aerius:EmissionSource .
-
-aerius:hasEmissionFactor a owl:ObjectProperty ;
-    rdfs:label "has Emission Factor" ;
-    rdfs:comment "Links an Emission Source to its Factor(s)." ;
-    rdfs:domain aerius:EmissionSource ;
-    rdfs:range aerius:EmissionFactor .
-
-aerius:includes a owl:ObjectProperty ;
-    rdfs:label "includes" ;
-    rdfs:comment "Links a Construction Project to the Activities it comprises." ;
-    rdfs:domain aerius:ConstructionProject ;
-    rdfs:range nen:Activity .
-
-aerius:affects a owl:ObjectProperty ;
-    rdfs:label "affects" ;
-    rdfs:comment "Indicates that a ConstructionProject affects certain SpatialRegions." ;
-    rdfs:domain aerius:ConstructionProject ;
-    rdfs:range nen:SpatialRegion .
-
-###############################################################################
-# OPTIONAL: If you want all nen:Activity to require an aerius:hasEmissionSource
-# in OWL, uncomment below. This only works under an OWL2 ruleset.
-#
-# nen:Activity
-#     rdfs:subClassOf [
-#         a owl:Restriction ;
-#         owl:onProperty aerius:hasEmissionSource ;
-#         owl:someValuesFrom aerius:EmissionSource
-#     ] .
-###############################################################################
-
-###############################################################################
-# SHACL SHAPES
-# We define constraints that produce validation errors if data is missing.
-###############################################################################
-
-# 1) An Activity should have at least 1 Emission Source
+##########
+# 1) ACTIVITY SHAPE
+##########
 ex:ActivityShape a sh:NodeShape ;
     sh:targetClass nen:Activity ;
+    sh:description "Every NEN Activity must indicate at least one EmissionSource for nitrogen calc." ;
     sh:property [
         sh:path aerius:hasEmissionSource ;
         sh:minCount 1 ;
-        sh:message "Every NEN Activity must have at least one Emission Source for AERIUS."
+        sh:message "NEN Activity must have aerius:hasEmissionSource (minCount=1)."
     ] .
 
-# 2) An EmissionSource should have at least 1 EmissionFactor
-ex:EmissionSourceShape a sh:NodeShape ;
-    sh:targetClass aerius:EmissionSource ;
-    sh:property [
-        sh:path aerius:hasEmissionFactor ;
-        sh:minCount 1 ;
-        sh:message "Each EmissionSource must have at least one EmissionFactor."
-    ] .
-
-# 3) A ConstructionProject should include at least 1 nen:Activity
+##########
+# 2) CONSTRUCTION PROJECT SHAPE
+#    (No year required, just label + at least 1 nen:Activity)
+##########
 ex:ConstructionProjectShape a sh:NodeShape ;
     sh:targetClass aerius:ConstructionProject ;
+    sh:description "A ConstructionProject requires a label and at least one nen:Activity." ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:message "Must have rdfs:label (project name)."
+    ] ;
     sh:property [
         sh:path aerius:includes ;
         sh:minCount 1 ;
-        sh:message "A ConstructionProject must include at least one Activity."
-    ] ;
-    sh:property [
-        sh:path aerius:affects ;
-        sh:minCount 1 ;
-        sh:message "A ConstructionProject must affect at least one SpatialRegion."
+        sh:message "Must include at least one nen:Activity."
     ] .
 
-###############################################################################
-# End of File
-###############################################################################
+##########
+# 3) MOBILE SOURCE SHAPE
+#    (Accepts integer OR decimal for the emission values)
+##########
+ex:MobileSourceShape a sh:NodeShape ;
+    sh:targetClass aerius:MobileSource ;
+    sh:description "A MobileSource must have label, position, sector ID, emissions, and at least 1 SpecificMobileSource." ;
+
+    # Label => string
+    sh:property [
+        sh:path aerius:mosolabel ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "Missing aerius:mosolabel for the mobile source."
+    ] ;
+
+    # Position => string
+    sh:property [
+        sh:path aerius:mosoposition ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "Missing aerius:mosoposition (string)."
+    ] ;
+
+    # Sector ID => string
+    sh:property [
+        sh:path aerius:sectorid ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "Missing aerius:sectorid (string)."
+    ] ;
+
+    # Emission fields => integer OR decimal
+    # e.g. if user typed "1100"^^xsd:integer or "1100.0"^^xsd:decimal
+    sh:property [
+        sh:path aerius:emitsNH3 ;
+        sh:minCount 1 ;
+        sh:or (
+            [ sh:datatype xsd:decimal ]
+            [ sh:datatype xsd:integer ]
+        ) ;
+        sh:message "Must specify NH3 (integer or decimal)."
+    ] ;
+    sh:property [
+        sh:path aerius:emitsNOX ;
+        sh:minCount 1 ;
+        sh:or (
+            [ sh:datatype xsd:decimal ]
+            [ sh:datatype xsd:integer ]
+        ) ;
+        sh:message "Must specify NOX (integer or decimal)."
+    ] ;
+    sh:property [
+        sh:path aerius:emitsPM10 ;
+        sh:minCount 1 ;
+        sh:or (
+            [ sh:datatype xsd:decimal ]
+            [ sh:datatype xsd:integer ]
+        ) ;
+        sh:message "Must specify PM10 (integer or decimal)."
+    ] ;
+    sh:property [
+        sh:path aerius:emitsNO2 ;
+        sh:minCount 1 ;
+        sh:or (
+            [ sh:datatype xsd:decimal ]
+            [ sh:datatype xsd:integer ]
+        ) ;
+        sh:message "Must specify NO2 (integer or decimal)."
+    ] ;
+
+    # Must link at least one SpecificMobileSource
+    sh:property [
+        sh:path aerius:hasSpecificMobileSource ;
+        sh:minCount 1 ;
+        sh:message "Must link at least one aerius:SpecificMobileSource."
+    ] .
+
+##########
+# 4) SPECIFIC MOBILE SOURCE SHAPE
+#    (Again, accept integer OR decimal for fuelyear)
+##########
+ex:SpecificMobileSourceShape a sh:NodeShape ;
+    sh:targetClass aerius:SpecificMobileSource ;
+    sh:description "A SpecificMobileSource must define mobtype, fuel usage, and a description." ;
+
+    # mobtype => string
+    sh:property [
+        sh:path aerius:mobtype ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "Missing aerius:mobtype (string)."
+    ] ;
+
+    # fuelyear => integer OR decimal
+    sh:property [
+        sh:path aerius:fuelyear ;
+        sh:minCount 1 ;
+        sh:or (
+            [ sh:datatype xsd:decimal ]
+            [ sh:datatype xsd:integer ]
+        ) ;
+        sh:message "Missing aerius:fuelyear (integer or decimal)."
+    ] ;
+
+    # description => string
+    sh:property [
+        sh:path aerius:description ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "Missing aerius:description (string)."
+    ] .

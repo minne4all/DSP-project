@@ -7,6 +7,7 @@ import re
 import json
 import zipfile
 import rdflib
+import uuid
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -17,9 +18,16 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 GRAPHDB_BASE_URL = "http://localhost:7200"
-REPOSITORY_NAME = "nen2660-poc"
+REPOSITORY_NAME = "DSP"
 SPARQL_UPDATE_ENDPOINT = f"{GRAPHDB_BASE_URL}/repositories/{REPOSITORY_NAME}/statements"
-SHAPES_FILE_PATH = "shapes/shacl-shapes.ttl"
+SHAPES_FILE_PATH = "shapes/new-shapes.ttl"
+
+# Store newly added triples in memory (the “New Document”).
+added_triples_history = []
+# Last validated data’s triple set (for display).
+LAST_UPLOADED_FILE_JSON = "last_uploaded_file.json"
+# SHACL shape overview & violations for the index page.
+SHACL_OVERVIEW_JSON = "shacl_overview.json"
 
 #Configuration for the AERIUS API
 UPLOAD_FOLDER = "gml outputs"
@@ -48,27 +56,50 @@ with open('./gml templates/calcpoint.gml', 'r') as file:
 
 
 # Function to for shacl validation
-def sparql_update(update_query):
-    """Send SPARQL update queries to the GraphDB repository."""
+def parse_numeric(num_str):
+    """
+    Returns e.g. '"123"^^xsd:decimal' if it’s numeric,
+    else falls back to plain string.
+    """
+    try:
+        float_val = float(num_str)
+        # If it has a decimal point, store as decimal else integer
+        if '.' in num_str:
+            return f'"{num_str}"^^xsd:decimal'
+        else:
+            return f'"{num_str}"^^xsd:integer'
+    except:
+        # fallback
+        return f'"{num_str}"'
+
+def parse_numeric_or_uri(obj_str):
+    """
+    If obj_str starts with http => treat as URIRef
+    else parse as numeric if possible, else string
+    """
+    if obj_str.startswith("http://") or obj_str.startswith("https://"):
+        return f'<{obj_str}>'
+    return parse_numeric(obj_str)
+
+def sparql_update(update_query: str) -> None:
+    """
+    Send a SPARQL UPDATE query to GraphDB.
+    """
     headers = {"Content-Type": "application/sparql-update"}
     response = requests.post(SPARQL_UPDATE_ENDPOINT, data=update_query, headers=headers)
     response.raise_for_status()
 
-def construct_insert_query(graph_uri, rdf_data):
+def construct_insert_query(graph_uri: str, rdf_data: str) -> str:
     """
-    Construct a SPARQL INSERT query, extracting @prefix lines
-    from the Turtle data and converting them to PREFIX statements.
+    Convert @prefix lines from Turtle into SPARQL PREFIX statements, then INSERT the rest.
     """
     prefix_pattern = r"@prefix\s+([\w\-]+):\s+<([^>]+)>\s*\."
     prefixes = re.findall(prefix_pattern, rdf_data)
-    prefix_statements = "\n".join([f"PREFIX {pfx}: <{uri}>" for pfx, uri in prefixes])
+    prefix_statements = "\n".join(f"PREFIX {p}: <{u}>" for p, u in prefixes)
 
-    # Remove the @prefix lines from the original RDF data
     rdf_data_no_prefix = re.sub(prefix_pattern, "", rdf_data)
-
     return f"""
     {prefix_statements}
-
     INSERT DATA {{
       GRAPH <{graph_uri}> {{
         {rdf_data_no_prefix}
@@ -76,86 +107,208 @@ def construct_insert_query(graph_uri, rdf_data):
     }}
     """
 
-def validate_and_extract_constraints(data_graph):
+def build_shape_overview(data_graph, shapes_graph, violations):
     """
-    Helper function that:
-      - Validates data_graph against the SHAPES_FILE_PATH
-      - Returns: (conforms, shacl_constraint_list, grouped_messages, error_details, violations_count)
+    Build an overview of shapes and their conformance, used for the index page’s summary.
     """
-    # Parse the shapes graph
+    from collections import defaultdict
+    from rdflib.namespace import RDF
+    SH = rdflib.Namespace("http://www.w3.org/ns/shacl#")
+
+    shape2violations = defaultdict(list)
+    for v in violations:
+        shape2violations[v["source_shape"]].append(v)
+
+    overview = []
+    for shape_node in shapes_graph.subjects(RDF.type, SH.NodeShape):
+        shape_name = str(shape_node)
+        desc_val = shapes_graph.value(shape_node, SH.description)
+        desc_str = str(desc_val) if desc_val else ""
+        target_class = shapes_graph.value(shape_node, SH.targetClass)
+
+        has_instance = False
+        if target_class:
+            has_instance = any(True for _ in data_graph.subjects(RDF.type, target_class))
+
+        if has_instance:
+            if shape_name in shape2violations:
+                total_count = len(shape2violations[shape_name])
+                if total_count > 0:
+                    overview.append({
+                        "shape_name": shape_name,
+                        "shape_description": desc_str,
+                        "status": "Violated",
+                        "focus_nodes": list({v["focus_node"] for v in shape2violations[shape_name]}),
+                        "progress": f"0% (still {total_count} violation(s))"
+                    })
+                else:
+                    overview.append({
+                        "shape_name": shape_name,
+                        "shape_description": desc_str,
+                        "status": "Conforms",
+                        "focus_nodes": [],
+                        "progress": "100% (all fixed!)"
+                    })
+            else:
+                overview.append({
+                    "shape_name": shape_name,
+                    "shape_description": desc_str,
+                    "status": "Conforms",
+                    "focus_nodes": [],
+                    "progress": "100%"
+                })
+        else:
+            # No instance found in data OR shape has no targetClass
+            if shape_name in shape2violations:
+                f_nodes = list({v["focus_node"] for v in shape2violations[shape_name]})
+                overview.append({
+                    "shape_name": shape_name,
+                    "shape_description": desc_str,
+                    "status": "Violated",
+                    "focus_nodes": f_nodes,
+                    "progress": "0%"
+                })
+            else:
+                # Not in data
+                overview.append({
+                    "shape_name": shape_name,
+                    "shape_description": desc_str,
+                    "status": "Not in data" if target_class else "Conforms or Not Applicable",
+                    "focus_nodes": [],
+                    "progress": "N/A" if target_class else "100%"
+                })
+
+    return overview
+
+def lookup_shacl_datatype(shape_uri, property_uri):
+    """
+    Look up the property constraints in the shape graph, returning possible datatypes or an 'object' marker.
+    """
     shapes_graph = rdflib.Graph()
     shapes_graph.parse(SHAPES_FILE_PATH, format="turtle")
 
-    # Validate
-    c, results_graph, results_text = validate(
-        data_graph,
-        shacl_graph=shapes_graph,
-        data_graph_format="turtle",
-        shacl_graph_format="turtle",
-        inference="rdfs"
-    )
+    SH = rdflib.Namespace("http://www.w3.org/ns/shacl#")
+    shape_node = rdflib.URIRef(shape_uri)
+    property_node = None
 
-    # Build result
-    conforms = c
-    shacl_constraint = []
-    grouped_messages = {}
-    error_details = None
-    violations_count = 0
+    # Find the property shape that matches property_uri
+    for prop_bnode in shapes_graph.objects(shape_node, SH.property):
+        p = shapes_graph.value(prop_bnode, SH.path)
+        if p and str(p) == property_uri:
+            property_node = prop_bnode
+            break
 
-    if not conforms:
-        # Collect all results
-        all_results = list(results_graph.subjects(
-            rdflib.RDF.type,
-            rdflib.URIRef("http://www.w3.org/ns/shacl#ValidationResult")
-        ))
-        violations_count = len(all_results)
-        error_details = results_text
+    if not property_node:
+        return []
 
-        # Build the 'shacl_constraint' list
-        for result in all_results:
-            focus_node = results_graph.value(
-                subject=result,
-                predicate=rdflib.URIRef("http://www.w3.org/ns/shacl#focusNode")
-            )
-            result_path = results_graph.value(
-                subject=result,
-                predicate=rdflib.URIRef("http://www.w3.org/ns/shacl#resultPath")
-            )
-            severity = results_graph.value(
-                subject=result,
-                predicate=rdflib.URIRef("http://www.w3.org/ns/shacl#resultSeverity")
-            )
-            source_shape = results_graph.value(
-                subject=result,
-                predicate=rdflib.URIRef("http://www.w3.org/ns/shacl#sourceShape")
-            )
-            message = results_graph.value(
-                subject=result,
-                predicate=rdflib.URIRef("http://www.w3.org/ns/shacl#resultMessage")
-            )
-            min_count = results_graph.value(
-                subject=result,
-                predicate=rdflib.URIRef("http://www.w3.org/ns/shacl#minCount")
-            )
+    # Check if there's sh:datatype or sh:or
+    datatypes = []
+    or_list = list(shapes_graph.objects(property_node, SH.or_))
+    if or_list:
+        # e.g. sh:or([ sh:datatype xsd:decimal ], [ sh:datatype xsd:integer ])
+        for or_bnode in or_list:
+            for item in shapes_graph.items(or_bnode):
+                dt = shapes_graph.value(item, SH.datatype)
+                if dt:
+                    datatypes.append(str(dt))
+    else:
+        # No sh:or => check direct sh:datatype
+        dt = shapes_graph.value(property_node, SH.datatype)
+        if dt:
+            datatypes.append(str(dt))
 
-            violation = {
-                "focus_node": str(focus_node) if focus_node else None,
-                "result_path": str(result_path) if result_path else None,
-                "severity": str(severity) if severity else None,
-                "source_shape": str(source_shape) if source_shape else None,
-                "message": str(message) if message else None,
-                "min_count": str(min_count) if min_count else None,
-            }
-            shacl_constraint.append(violation)
+    # If none found => possibly an object property
+    return datatypes
 
-        # Group by message so each message is shown once
-        for v in shacl_constraint:
-            msg = v["message"]
-            if msg not in grouped_messages:
-                grouped_messages[msg] = []
-            grouped_messages[msg].append(v)
+def _handle_violations(data_graph, shapes_graph, results_graph, results_text, error_msg):
+    """
+    Parse validation results, store them in JSON, then redirect with an error message if needed.
+    """
+    from rdflib.namespace import RDF
+    SH = rdflib.Namespace("http://www.w3.org/ns/shacl#")
 
-    return (conforms, shacl_constraint, grouped_messages, error_details, violations_count)
+    violations = []
+    for result in results_graph.subjects(RDF.type, SH.ValidationResult):
+        focus_node = results_graph.value(result, SH.focusNode)
+        result_path = results_graph.value(result, SH.resultPath)
+        severity = results_graph.value(result, SH.resultSeverity)
+        source_shape = results_graph.value(result, SH.sourceShape)
+        message = results_graph.value(result, SH.resultMessage)
+        min_count = results_graph.value(result, SH.minCount)
+
+        if isinstance(source_shape, rdflib.BNode):
+            parent_shapes = list(shapes_graph.subjects(predicate=SH.property, object=source_shape))
+            if parent_shapes:
+                source_shape = parent_shapes[0]
+
+        violations.append({
+            "focus_node": str(focus_node) if focus_node else None,
+            "result_path": str(result_path) if result_path else None,
+            "severity": str(severity) if severity else None,
+            "source_shape": str(source_shape) if source_shape else None,
+            "message": str(message) if message else None,
+            "min_count": str(min_count) if min_count else None,
+        })
+
+    overview = build_shape_overview(data_graph, shapes_graph, violations)
+    with open(SHACL_OVERVIEW_JSON, "w") as f:
+        json.dump({"overview": overview, "violations": violations}, f, indent=2)
+
+    merged_triples = [(str(s), str(p), str(o)) for (s, p, o) in data_graph]
+    with open(LAST_UPLOADED_FILE_JSON, "w") as f:
+        json.dump(merged_triples, f, indent=2)
+
+    return redirect(url_for("index", error=error_msg, error_details=results_text))
+
+def create_rdflib_node(value: str):
+    """
+    Naive approach: if it starts with http:// => URIRef, else treat as literal.
+    (Could be enhanced to parse shape constraints for typed literals.)
+    """
+    if value.startswith("http://") or value.startswith("https://"):
+        return rdflib.URIRef(value)
+    return rdflib.Literal(value)
+
+def _handle_violations(data_graph, shapes_graph, results_graph, results_text, error_msg):
+    """
+    Gather violation info, store it in JSON, then redirect with an error.
+    """
+    from rdflib.namespace import RDF
+    SH = rdflib.Namespace("http://www.w3.org/ns/shacl#")
+
+    violations = []
+    for result in results_graph.subjects(RDF.type, SH.ValidationResult):
+        focus_node = results_graph.value(result, SH.focusNode)
+        result_path = results_graph.value(result, SH.resultPath)
+        severity = results_graph.value(result, SH.resultSeverity)
+        source_shape = results_graph.value(result, SH.sourceShape)
+        message = results_graph.value(result, SH.resultMessage)
+        min_count = results_graph.value(result, SH.minCount)
+
+        # Convert blank-node property shapes to their parent node shape:
+        if isinstance(source_shape, rdflib.BNode):
+            parent_shapes = list(shapes_graph.subjects(predicate=SH.property, object=source_shape))
+            if parent_shapes:
+                source_shape = parent_shapes[0]
+
+        violations.append({
+            "focus_node": str(focus_node) if focus_node else None,
+            "result_path": str(result_path) if result_path else None,
+            "severity": str(severity) if severity else None,
+            "source_shape": str(source_shape) if source_shape else None,
+            "message": str(message) if message else None,
+            "min_count": str(min_count) if min_count else None,
+        })
+
+    overview = build_shape_overview(data_graph, shapes_graph, violations)
+    with open(SHACL_OVERVIEW_JSON, "w") as f:
+        json.dump({"overview": overview, "violations": violations}, f, indent=2)
+
+    merged_triples = [(str(s), str(p), str(o)) for (s, p, o) in data_graph]
+    with open(LAST_UPLOADED_FILE_JSON, "w") as f:
+        json.dump(merged_triples, f, indent=2)
+
+    return redirect(url_for("index", error=error_msg, error_details=results_text))
 
 
 #Functions for AERIUS API
@@ -282,318 +435,373 @@ def generate_gml_from_form_data(form_data):
 
 
 #App routes for Shacl
-@app.route("/", methods=["GET", "POST"])
+@app.route("/")
 def index():
-    """
-    Main route:
-      - GET: show the page with uploaded files
-      - POST:
-        1) Upload a new .ttl file
-        2) Or if user selects a file and clicks "Process Selected File", re-validate that file
-    """
-    uploaded_files = os.listdir(app.config["UPLOAD_FOLDER"])
+    error = request.args.get("error")
+    error_details = request.args.get("error_details")
+    success = request.args.get("success")
 
-    # Template vars
-    success = None
-    error = None
-    error_details = None
-    shacl_constraint = []
-    file_data = []
-    conforms = True
-    violations_count = 0
-    grouped_messages = {}
+    uploaded_triples = []
+    if os.path.exists(LAST_UPLOADED_FILE_JSON):
+        with open(LAST_UPLOADED_FILE_JSON, "r") as f:
+            uploaded_triples = json.load(f)
 
-    # 1) User is uploading a new file
-    if request.method == "POST" and "nen_file" in request.files:
-        file = request.files["nen_file"]
-        if not file.filename.endswith(".ttl"):
-            error = "Please upload a valid Turtle (.ttl) file."
+    conformance_overview = []
+    shacl_violations = []
+    if os.path.exists(SHACL_OVERVIEW_JSON):
+        with open(SHACL_OVERVIEW_JSON, "r") as f:
+            data = json.load(f)
+            conformance_overview = data.get("overview", [])
+            shacl_violations = data.get("violations", [])
+
+    # Build dictionary for shapes
+    shapes_graph = rdflib.Graph()
+    shapes_graph.parse(SHAPES_FILE_PATH, format="turtle")
+    SH = rdflib.Namespace("http://www.w3.org/ns/shacl#")
+
+    shape_property_map = {}
+    shape_targetclass_map = {}
+    for shape_node in shapes_graph.subjects(rdflib.RDF.type, SH.NodeShape):
+        shape_uri = str(shape_node)
+        prop_paths = []
+        for prop_bnode in shapes_graph.objects(shape_node, SH.property):
+            p = shapes_graph.value(prop_bnode, SH.path)
+            if p:
+                prop_paths.append(str(p))
+        shape_property_map[shape_uri] = prop_paths
+
+        tc = shapes_graph.value(shape_node, SH.targetClass)
+        if tc:
+            shape_targetclass_map[shape_uri] = str(tc)
         else:
-            file_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
-            file.save(file_path)
+            shape_targetclass_map[shape_uri] = ""
 
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    rdf_data = f.read()
-
-                data_graph = rdflib.Graph()
-                data_graph.parse(data=rdf_data, format="turtle")
-
-                # For display
-                file_data = [
-                    {"subject": str(s), "predicate": str(p), "object": str(o)}
-                    for s, p, o in data_graph
-                ]
-
-                # Validate with pySHACL
-                c, sc, gm, ed, vc = validate_and_extract_constraints(data_graph)
-                conforms = c
-                shacl_constraint = sc
-                grouped_messages = gm
-                error_details = ed
-                violations_count = vc
-
-                if not conforms:
-                    error = "Your file failed SHACL validation."
-                else:
-                    # Insert into GraphDB if it passes
-                    graph_uri = f"http://example.org/graphs/{file.filename}"
-                    insert_query = construct_insert_query(graph_uri, rdf_data)
-                    sparql_update(insert_query)
-                    success = (
-                        f"File '{file.filename}' validated and uploaded to GraphDB "
-                        f"as <{graph_uri}>."
-                    )
-
-            except Exception as e:
-                error = f"Error uploading file '{file.filename}': {str(e)}"
-
-    # 2) User selected an existing file to re-validate
-    elif request.method == "POST" and "selected_file" in request.form:
-        selected_file = request.form.get("selected_file")
-        if selected_file:
-            file_path = os.path.join(app.config["UPLOAD_FOLDER"], selected_file)
-            if os.path.exists(file_path):
-                try:
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        rdf_data = f.read()
-
-                    data_graph = rdflib.Graph()
-                    data_graph.parse(data=rdf_data, format="turtle")
-
-                    # For display
-                    file_data = [
-                        {"subject": str(s), "predicate": str(p), "object": str(o)}
-                        for s, p, o in data_graph
-                    ]
-
-                    # Validate existing data
-                    c, sc, gm, ed, vc = validate_and_extract_constraints(data_graph)
-                    conforms = c
-                    shacl_constraint = sc
-                    grouped_messages = gm
-                    error_details = ed
-                    violations_count = vc
-
-                    if not conforms:
-                        error = f"File '{selected_file}' failed SHACL validation."
-                    else:
-                        success = (
-                            f"File '{selected_file}' re-validated successfully. "
-                            "No SHACL violations found."
-                        )
-                except Exception as e:
-                    error = f"Error processing file '{selected_file}': {str(e)}"
-            else:
-                error = f"File '{selected_file}' does not exist."
-        else:
-            error = "No file selected to process."
+    # Build shape->list of focus nodes from violations
+    shape_violation_map = {}
+    for v in shacl_violations:
+        shape = v["source_shape"]
+        focus_node = v["focus_node"]
+        if shape and focus_node:
+            if shape not in shape_violation_map:
+                shape_violation_map[shape] = []
+            shape_violation_map[shape].append(focus_node)
 
     return render_template(
         "index.html",
-        uploaded_files=uploaded_files,
-        success=success,
         error=error,
         error_details=error_details,
-        shacl_constraint=shacl_constraint,
-        file_data=file_data,
-        conforms=conforms,
-        violations_count=violations_count,
-        grouped_messages=grouped_messages
+        success=success,
+        uploaded_triples=uploaded_triples,
+        new_document_triples=added_triples_history,
+        conformance_overview=conformance_overview,
+        shacl_violations=shacl_violations,
+        shape_property_map=shape_property_map,
+        shape_violation_map=shape_violation_map,
+        shape_targetclass_map=shape_targetclass_map,
+        enumerate=enumerate,
     )
 
-@app.route("/delete-file", methods=["POST"])
-def delete_file():
-    """Delete file route (loads a confirmation page)."""
-    file_name = request.form.get("file_name")
-    if not file_name:
-        return render_template(
-            "index.html",
-            error="No file specified for deletion.",
-            uploaded_files=os.listdir(app.config["UPLOAD_FOLDER"]),
-            shacl_constraint=[],
-            file_data=[],
-            conforms=True,
-            violations_count=0,
-            grouped_messages={}
-        )
-    return render_template(
-        "confirm_delete.html",
-        file_name=file_name,
-        uploaded_files=os.listdir(app.config["UPLOAD_FOLDER"]),
-        shacl_constraint=[],
-        file_data=[],
-        conforms=True,
-        violations_count=0,
-        grouped_messages={}
-    )
-
-@app.route("/delete-confirmed", methods=["POST"])
-def delete_confirmed():
-    """Performs the actual file+graph deletion."""
-    file_name = request.form.get("file_name")
-    if not file_name:
-        return render_template(
-            "index.html",
-            error="No file specified for deletion.",
-            uploaded_files=os.listdir(app.config["UPLOAD_FOLDER"]),
-            shacl_constraint=[],
-            file_data=[],
-            conforms=True,
-            violations_count=0,
-            grouped_messages={}
-        )
-
-    try:
-        file_path = os.path.join(app.config["UPLOAD_FOLDER"], file_name)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-        graph_uri = f"http://example.org/graphs/{file_name}"
-        delete_query = f"DROP GRAPH <{graph_uri}>"
-        sparql_update(delete_query)
-
-        success = f"File '{file_name}' and its data in GraphDB have been deleted."
-        return render_template(
-            "index.html",
-            success=success,
-            uploaded_files=os.listdir(app.config["UPLOAD_FOLDER"]),
-            shacl_constraint=[],
-            file_data=[],
-            conforms=True,
-            violations_count=0,
-            grouped_messages={}
-        )
-    except Exception as e:
-        error = f"Error deleting file '{file_name}': {str(e)}"
-        return render_template(
-            "index.html",
-            error=error,
-            uploaded_files=os.listdir(app.config["UPLOAD_FOLDER"]),
-            shacl_constraint=[],
-            file_data=[],
-            conforms=True,
-            violations_count=0,
-            grouped_messages={}
-        )
-
-@app.route("/shacl-summary", methods=["GET"])
-def shacl_summary():
+@app.template_filter('frag')
+def frag(uri: str) -> str:
     """
-    Parse and return a human-readable summary of SHACL constraints as JSON.
-    If you want it as an HTML page, you can convert the JSON response into
-    a template or transform it in client-side code.
+    Return the part after '#', used to shorten URIs in templates.
+    """
+    if '#' in uri:
+        return uri.rsplit('#', 1)[-1]
+    return uri
+
+@app.route("/upload_and_validate", methods=["POST"])
+def upload_and_validate():
+    """
+    Handle a newly uploaded .ttl file, do SHACL validation, and insert if conforming.
+    """
+    if "nen_file" not in request.files:
+        return redirect(url_for("index", error="No file part in request."))
+
+    file = request.files["nen_file"]
+    if not file or file.filename == "":
+        return redirect(url_for("index", error="No file selected."))
+    if not file.filename.endswith(".ttl"):
+        return redirect(url_for("index", error="Please upload a .ttl file."))
+
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+    file.save(filepath)
+
+    with open(filepath, "r", encoding="utf-8") as f:
+        ttl_data = f.read()
+
+    data_graph = rdflib.Graph()
+    data_graph.parse(data=ttl_data, format="turtle")
+
+    # Merge in-memory new doc
+    for (s, p, o) in added_triples_history:
+        data_graph.add((rdflib.URIRef(s), rdflib.URIRef(p), rdflib.Literal(o)))
+
+    # Parse shapes
+    shapes_graph = rdflib.Graph()
+    shapes_graph.parse(SHAPES_FILE_PATH, format="turtle")
+
+    # Validate
+    conforms, results_graph, results_text = validate(
+        data_graph=data_graph,
+        shacl_graph=shapes_graph,
+        inference="rdfs",
+        data_graph_format="turtle",
+        shacl_graph_format="turtle",
+        serialize_report_graph=False
+    )
+
+    if conforms:
+        # Insert into GraphDB
+        graph_uri = f"http://example.org/graphs/{file.filename}"
+        try:
+            update_query = construct_insert_query(graph_uri, ttl_data)
+            sparql_update(update_query)
+        except Exception as e:
+            return redirect(url_for("index", error=f"Insertion to GraphDB failed: {str(e)}"))
+
+        # Save merged data
+        merged_triples = [(str(s), str(p), str(o)) for (s, p, o) in data_graph]
+        with open(LAST_UPLOADED_FILE_JSON, "w") as f:
+            json.dump(merged_triples, f, indent=2)
+
+        # Reset SHACL info
+        with open(SHACL_OVERVIEW_JSON, "w") as f:
+            json.dump({"overview": [], "violations": []}, f)
+
+        return redirect(url_for("index", success="File uploaded and validated successfully!"))
+
+    # If not conforming => gather violations
+    return _handle_violations(data_graph, shapes_graph, results_graph, results_text, "SHACL validation failed.")
+
+@app.route("/revalidate", methods=["POST"])
+def revalidate():
+    """
+    Re-run SHACL validation on the last validated data + new doc in memory.
+    """
+    if not os.path.exists(LAST_UPLOADED_FILE_JSON):
+        return redirect(url_for("index", error="No previously uploaded data to revalidate."))
+
+    with open(LAST_UPLOADED_FILE_JSON, "r") as f:
+        triple_list = json.load(f)
+
+    data_graph = rdflib.Graph()
+    for (s, p, o) in triple_list:
+        data_graph.add(
+            (rdflib.URIRef(s), rdflib.URIRef(p), create_rdflib_node(o))
+        )
+
+    # Add new doc
+    for (s, p, o) in added_triples_history:
+        data_graph.add(
+            (rdflib.URIRef(s), rdflib.URIRef(p), create_rdflib_node(o))
+        )
+
+    shapes_graph = rdflib.Graph()
+    shapes_graph.parse(SHAPES_FILE_PATH, format="turtle")
+
+    conforms, results_graph, results_text = validate(
+        data_graph=data_graph,
+        shacl_graph=shapes_graph,
+        inference="rdfs",
+        data_graph_format="turtle",
+        shacl_graph_format="turtle",
+        serialize_report_graph=False
+    )
+
+    if conforms:
+        final_triples = [(str(s), str(p), str(o)) for (s, p, o) in data_graph]
+        with open(LAST_UPLOADED_FILE_JSON, "w") as f:
+            json.dump(final_triples, f, indent=2)
+
+        with open(SHACL_OVERVIEW_JSON, "w") as f:
+            json.dump({"overview": [], "violations": []}, f)
+
+        return redirect(url_for("index", success="Revalidation successful! No more SHACL errors."))
+    else:
+        return _handle_violations(data_graph, shapes_graph, results_graph, results_text, "Revalidation found SHACL violations.")
+
+@app.route("/add_missing_data", methods=["POST"])
+def add_missing_data():
+    shape_uri = request.form.get("shape_uri", "").strip()
+    focus_node = request.form.get("focus_node", "").strip()
+    manual_focus_val = request.form.get("manual_focus_node", "").strip()
+    predicate = request.form.get("predicate", "").strip()
+    object_value = request.form.get("object_value", "").strip()
+    target_class = request.form.get("target_class", "").strip()
+
+    # Wizard fields for MobileSource
+    mosolabel = request.form.get("mosolabel_wiz", "").strip()
+    mosoposition = request.form.get("mosoposition_wiz", "").strip()
+    sectorid = request.form.get("sectorid_wiz", "").strip()
+    emitsNH3 = request.form.get("emitsNH3_wiz", "").strip()
+    emitsNOX = request.form.get("emitsNOX_wiz", "").strip()
+    emitsPM10 = request.form.get("emitsPM10_wiz", "").strip()
+    emitsNO2 = request.form.get("emitsNO2_wiz", "").strip()
+
+    # Optional sub-wizard for the same MobileSource
+    sms_mobtype = request.form.get("wizard_sms_mobtype", "").strip()
+    sms_fuelyear = request.form.get("wizard_sms_fuelyear", "").strip()
+    sms_desc = request.form.get("wizard_sms_description", "").strip()
+
+    # Wizard fields for SpecificMobileSource
+    sm_mobtype = request.form.get("mobtype_wiz", "").strip()
+    sm_fuelyear = request.form.get("fuelyear_wiz", "").strip()
+    sm_description = request.form.get("description_wiz", "").strip()
+
+    # 1) If user chose "Manual Focus Node," build a real URI
+    if focus_node == "MANUAL_FOCUS":
+        # If they typed an absolute URI => keep it
+        # Else prefix it with e.g. "http://example.org/test-data#"
+        if manual_focus_val.startswith("http://") or manual_focus_val.startswith("https://"):
+            focus_node = manual_focus_val
+        else:
+            focus_node = f"http://example.org/test-data#{manual_focus_val}"
+
+    if not shape_uri or not focus_node:
+        return redirect(url_for("index", error="No shape or focus node selected."))
+
+    # 2) If shape = MobileSourceShape & user filled wizard => create all props
+    if shape_uri.endswith("MobileSourceShape") and (
+        mosolabel or mosoposition or sectorid or emitsNH3 or emitsNOX or emitsPM10 or emitsNO2
+    ):
+        # type triple
+        added_triples_history.append(
+            (focus_node, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+             "http://example.org/graphs/aerius-extension#MobileSource")
+        )
+
+        # add properties, converting numeric fields
+        if mosolabel:
+            added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#mosolabel", mosolabel))
+        if mosoposition:
+            added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#mosoposition", mosoposition))
+        if sectorid:
+            added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#sectorid", sectorid))
+
+        # parse numeric
+        if emitsNH3:
+            added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#emitsNH3",
+                                          parse_numeric(emitsNH3)))
+        if emitsNOX:
+            added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#emitsNOX",
+                                          parse_numeric(emitsNOX)))
+        if emitsPM10:
+            added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#emitsPM10",
+                                          parse_numeric(emitsPM10)))
+        if emitsNO2:
+            added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#emitsNO2",
+                                          parse_numeric(emitsNO2)))
+
+        # sub-wizard for creating a single SpecificMobileSource
+        if sms_mobtype or sms_fuelyear or sms_desc:
+            # create a new node for the SpecificMobileSource
+            sm_uri = f"http://example.org/test-data#SMS_{uuid.uuid4().hex[:6]}"  # or generate a user-provided name
+            added_triples_history.append(
+                (focus_node, "http://example.org/graphs/aerius-extension#hasSpecificMobileSource", sm_uri)
+            )
+            added_triples_history.append(
+                (sm_uri, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+                 "http://example.org/graphs/aerius-extension#SpecificMobileSource")
+            )
+            if sms_mobtype:
+                added_triples_history.append((sm_uri, "http://example.org/graphs/aerius-extension#mobtype", sms_mobtype))
+            if sms_fuelyear:
+                added_triples_history.append((sm_uri, "http://example.org/graphs/aerius-extension#fuelyear",
+                                             parse_numeric(sms_fuelyear)))
+            if sms_desc:
+                added_triples_history.append((sm_uri, "http://example.org/graphs/aerius-extension#description", sms_desc))
+
+        return redirect(url_for("index", success="MobileSource wizard data added!"))
+
+    # 3) If shape = SpecificMobileSourceShape => create it
+    if shape_uri.endswith("SpecificMobileSourceShape") and (sm_mobtype or sm_fuelyear or sm_description):
+        # type triple
+        added_triples_history.append(
+            (focus_node, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+             "http://example.org/graphs/aerius-extension#SpecificMobileSource")
+        )
+        if sm_mobtype:
+            added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#mobtype", sm_mobtype))
+        if sm_fuelyear:
+            added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#fuelyear",
+                                         parse_numeric(sm_fuelyear)))
+        if sm_description:
+            added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#description", sm_description))
+
+        return redirect(url_for("index", success="SpecificMobileSource wizard data added!"))
+
+    # 4) Fallback single property approach
+    if predicate and object_value:
+        # Single triple approach
+        added_triples_history.append((focus_node, predicate, parse_numeric_or_uri(object_value)))
+
+        # If shape has a target class => type triple
+        if target_class:
+            added_triples_history.append((focus_node, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", target_class))
+
+        # If property == hasEmissionSource => type object as EmissionSource
+        if predicate == "http://example.org/graphs/aerius-extension#hasEmissionSource":
+            added_triples_history.append((
+                object_value,
+                "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+                "http://example.org/graphs/aerius-extension#EmissionSource"
+            ))
+
+        return redirect(url_for("index", success="Single triple data added!"))
+
+    # 5) No data
+    return redirect(url_for("index", error="No wizard fields or single property provided."))
+
+@app.route("/delete_new_triple", methods=["POST"])
+def delete_new_triple():
+    """
+    Remove a triple from the new doc in memory.
+    """
+    idx_str = request.form.get("triple_index")
+    try:
+        idx = int(idx_str)
+        if 0 <= idx < len(added_triples_history):
+            del added_triples_history[idx]
+            return redirect(url_for("index", success="Triple deleted."))
+        else:
+            return redirect(url_for("index", error="Invalid triple index."))
+    except Exception as e:
+        return redirect(url_for("index", error=str(e)))
+
+@app.route("/shacl_constraints")
+def shacl_constraints():
+    """
+    A simpler page listing all NodeShapes from the SHACL file.
     """
     if not os.path.exists(SHAPES_FILE_PATH):
-        return jsonify({"error": "SHACL shapes file not found."}), 404
+        return redirect(url_for("index", error="SHACL shapes file not found."))
 
+    shapes_data = rdflib.Graph()
     try:
-        g = rdflib.Graph()
-        g.parse(SHAPES_FILE_PATH, format="turtle")
-
-        constraints = []
-        for shape in g.subjects(rdflib.RDF.type, rdflib.URIRef("http://www.w3.org/ns/shacl#NodeShape")):
-            shape_name = g.value(shape, rdflib.RDFS.label) or shape
-            properties = []
-
-            for prop in g.objects(shape, rdflib.URIRef("http://www.w3.org/ns/shacl#property")):
-                path = g.value(prop, rdflib.URIRef("http://www.w3.org/ns/shacl#path"))
-                min_count = g.value(prop, rdflib.URIRef("http://www.w3.org/ns/shacl#minCount"))
-                max_count = g.value(prop, rdflib.URIRef("http://www.w3.org/ns/shacl#maxCount"))
-                message = g.value(prop, rdflib.URIRef("http://www.w3.org/ns/shacl#message"))
-
-                properties.append({
-                    "path": str(path) if path else None,
-                    "min_count": str(min_count) if min_count else None,
-                    "max_count": str(max_count) if max_count else None,
-                    "message": str(message) if message else None
-                })
-
-            constraints.append({
-                "shape": str(shape_name),
-                "properties": properties
-            })
-
-        return jsonify(constraints)
-
+        shapes_data.parse(SHAPES_FILE_PATH, format="turtle")
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return redirect(url_for("index", error=f"Error parsing shapes: {e}"))
 
-@app.route("/update-triples", methods=["POST"])
-def update_triples():
-    """
-    Receives JSON payload:
-      {
-        "filename": "someFile.ttl",
-        "triples": [
-          {"subject": "...", "predicate": "...", "object": "..."},
-          ...
-        ]
-      }
-    Appends these triple(s) to the named file, re-runs SHACL validation,
-    and returns JSON with 'conforms' plus violation info or errors.
-    """
-    try:
-        data = request.get_json()
-        filename = data.get('filename')
-        triple_updates = data.get('triples', [])
+    from rdflib.namespace import RDF
+    SH = rdflib.Namespace("http://www.w3.org/ns/shacl#")
 
-        if not filename:
-            return jsonify({"error": "No filename provided."}), 400
-
-        file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        if not os.path.exists(file_path):
-            return jsonify({"error": f"File '{filename}' not found."}), 400
-
-        # Parse existing graph
-        g = rdflib.Graph()
-        g.parse(file_path, format="turtle")
-
-        # Add the new/updated triples
-        for t in triple_updates:
-            subj_str = t.get('subject', '').strip()
-            pred_str = t.get('predicate', '').strip()
-            obj_str  = t.get('object', '').strip()
-            if subj_str and pred_str and obj_str:
-                s = rdflib.URIRef(subj_str)  # or interpret if it's not a URI
-                p = rdflib.URIRef(pred_str)
-                # For a simple approach, treat object as literal:
-                o = rdflib.Literal(obj_str, datatype=rdflib.XSD.string)
-                g.add((s, p, o))
-
-        # Overwrite the file with updated data
-        g.serialize(destination=file_path, format="turtle")
-
-        # Re-validate
-        shapes_graph = rdflib.Graph()
-        shapes_graph.parse(SHAPES_FILE_PATH, format="turtle")
-        conforms, results_graph, results_text = validate(
-            g,
-            shacl_graph=shapes_graph,
-            data_graph_format="turtle",
-            shacl_graph_format="turtle",
-            inference="rdfs"
-        )
-
-        if not conforms:
-            all_results = list(results_graph.subjects(
-                rdflib.RDF.type,
-                rdflib.URIRef("http://www.w3.org/ns/shacl#ValidationResult")
-            ))
-            return jsonify({
-                "conforms": False,
-                "violations_count": len(all_results),
-                "report": results_text
-            })
-        else:
-            return jsonify({
-                "conforms": True,
-                "report": results_text
+    all_shacl_constraints = []
+    for shape_node in shapes_data.subjects(RDF.type, SH.NodeShape):
+        shape_name = str(shape_node)
+        target_class = shapes_data.value(shape_node, SH.targetClass)
+        for prop in shapes_data.objects(shape_node, SH.property):
+            path = shapes_data.value(prop, SH.path)
+            msg = shapes_data.value(prop, SH.message)
+            all_shacl_constraints.append({
+                "shape_name": shape_name,
+                "target_class": str(target_class) if target_class else "",
+                "path": str(path) if path else "",
+                "message": str(msg) if msg else ""
             })
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    
+    return render_template("shacl_constraints.html", all_shacl_constraints=all_shacl_constraints)
+
 
 #App routes for AERIUS API
 @app.route('/aerius', methods=['GET', 'POST'])
@@ -734,7 +942,6 @@ def check_status(job_key, job_name):
             jobs[job_key]["status"] = job_info.get("status", "unknown")
     return redirect(url_for('aerius'))
 
-
 @app.route('/aerius/view/<folder>/<filename>')
 def view_file(folder, filename):
     pdf_path = os.path.join(RESULT_FOLDER, folder, filename)
@@ -742,7 +949,6 @@ def view_file(folder, filename):
         return send_file(pdf_path, as_attachment=False)
     flash("File not found.")
     return redirect('/aerius')
-
 
 @app.route('/aerius/download/<folder>/<filename>')
 def download_file(folder, filename):
