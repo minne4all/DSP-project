@@ -9,13 +9,10 @@ Example projects to be used in the application can be found in the 'projects' fo
 
 This project requires the following Python libraries:
 
-Flask – Web framework for building the application (flask)
-
-Requests – HTTP library for making API calls (requests)
-
-rdflib – Library for working with RDF data (rdflib)
-
-pySHACL – SHACL validation for RDF graphs (pyshacl)
+- Flask – Web framework for building the application 
+- Requests – HTTP library for making API calls 
+- rdflib – Library for working with RDF data 
+- pySHACL – SHACL validation for RDF graphs 
 
 
 In order to run the application, run 'main.py' and follow the link in the terminal. 
