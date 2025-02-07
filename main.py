@@ -12,7 +12,7 @@ import uuid
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-# Configuration Shacl
+# Configuration for shacl validation
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -20,13 +20,10 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 GRAPHDB_BASE_URL = "http://localhost:7200"
 REPOSITORY_NAME = "DSP"
 SPARQL_UPDATE_ENDPOINT = f"{GRAPHDB_BASE_URL}/repositories/{REPOSITORY_NAME}/statements"
-SHAPES_FILE_PATH = "shapes/new-shapes.ttl"
+SHAPES_FILE_PATH = "shapes/final-shapes.ttl"
 
-# Store newly added triples in memory (the “New Document”).
 added_triples_history = []
-# Last validated data’s triple set (for display).
 LAST_UPLOADED_FILE_JSON = "last_uploaded_file.json"
-# SHACL shape overview & violations for the index page.
 SHACL_OVERVIEW_JSON = "shacl_overview.json"
 
 #Configuration for the AERIUS API
@@ -41,7 +38,7 @@ JOB_BASE_URL = "https://connect.aerius.nl/api/v8/jobs"
 API_KEY = "acca4ef0301a4f019b7a6bc99e6781d4"
 jobs = {}
 
-# Load templates
+# Load templates for gml file creation
 with open('./gml templates/featurecollection.gml', 'r') as file:
     featcoll = file.read()
 
@@ -58,24 +55,20 @@ with open('./gml templates/calcpoint.gml', 'r') as file:
 # Function to for shacl validation
 def parse_numeric(num_str):
     """
-    Returns e.g. '"123"^^xsd:decimal' if it’s numeric,
-    else falls back to plain string.
+    Returns a numeric value as a string with the appropriate datatype.
     """
     try:
         float_val = float(num_str)
-        # If it has a decimal point, store as decimal else integer
         if '.' in num_str:
             return f'"{num_str}"^^xsd:decimal'
         else:
             return f'"{num_str}"^^xsd:integer'
     except:
-        # fallback
         return f'"{num_str}"'
 
 def parse_numeric_or_uri(obj_str):
     """
-    If obj_str starts with http => treat as URIRef
-    else parse as numeric if possible, else string
+    Try to get URIRef if it starts with http://, else parse as numeric.
     """
     if obj_str.startswith("http://") or obj_str.startswith("https://"):
         return f'<{obj_str}>'
@@ -109,7 +102,7 @@ def construct_insert_query(graph_uri: str, rdf_data: str) -> str:
 
 def build_shape_overview(data_graph, shapes_graph, violations):
     """
-    Build an overview of shapes and their conformance, used for the index page’s summary.
+    Build an overview of shapes and their conformance, used for the index page's summary.
     """
     from collections import defaultdict
     from rdflib.namespace import RDF
@@ -158,7 +151,6 @@ def build_shape_overview(data_graph, shapes_graph, violations):
                     "progress": "100%"
                 })
         else:
-            # No instance found in data OR shape has no targetClass
             if shape_name in shape2violations:
                 f_nodes = list({v["focus_node"] for v in shape2violations[shape_name]})
                 overview.append({
@@ -169,7 +161,6 @@ def build_shape_overview(data_graph, shapes_graph, violations):
                     "progress": "0%"
                 })
             else:
-                # Not in data
                 overview.append({
                     "shape_name": shape_name,
                     "shape_description": desc_str,
@@ -191,7 +182,6 @@ def lookup_shacl_datatype(shape_uri, property_uri):
     shape_node = rdflib.URIRef(shape_uri)
     property_node = None
 
-    # Find the property shape that matches property_uri
     for prop_bnode in shapes_graph.objects(shape_node, SH.property):
         p = shapes_graph.value(prop_bnode, SH.path)
         if p and str(p) == property_uri:
@@ -201,28 +191,24 @@ def lookup_shacl_datatype(shape_uri, property_uri):
     if not property_node:
         return []
 
-    # Check if there's sh:datatype or sh:or
     datatypes = []
     or_list = list(shapes_graph.objects(property_node, SH.or_))
     if or_list:
-        # e.g. sh:or([ sh:datatype xsd:decimal ], [ sh:datatype xsd:integer ])
         for or_bnode in or_list:
             for item in shapes_graph.items(or_bnode):
                 dt = shapes_graph.value(item, SH.datatype)
                 if dt:
                     datatypes.append(str(dt))
     else:
-        # No sh:or => check direct sh:datatype
         dt = shapes_graph.value(property_node, SH.datatype)
         if dt:
             datatypes.append(str(dt))
 
-    # If none found => possibly an object property
     return datatypes
 
 def _handle_violations(data_graph, shapes_graph, results_graph, results_text, error_msg):
     """
-    Parse validation results, store them in JSON, then redirect with an error message if needed.
+    Parse validation results and redirect user.
     """
     from rdflib.namespace import RDF
     SH = rdflib.Namespace("http://www.w3.org/ns/shacl#")
@@ -262,8 +248,7 @@ def _handle_violations(data_graph, shapes_graph, results_graph, results_text, er
 
 def create_rdflib_node(value: str):
     """
-    Naive approach: if it starts with http:// => URIRef, else treat as literal.
-    (Could be enhanced to parse shape constraints for typed literals.)
+    If it starts with http:// make it a URIRef, else treat as literal.
     """
     if value.startswith("http://") or value.startswith("https://"):
         return rdflib.URIRef(value)
@@ -271,7 +256,7 @@ def create_rdflib_node(value: str):
 
 def _handle_violations(data_graph, shapes_graph, results_graph, results_text, error_msg):
     """
-    Gather violation info, store it in JSON, then redirect with an error.
+    Gather violation info and redirect user.
     """
     from rdflib.namespace import RDF
     SH = rdflib.Namespace("http://www.w3.org/ns/shacl#")
@@ -285,7 +270,6 @@ def _handle_violations(data_graph, shapes_graph, results_graph, results_text, er
         message = results_graph.value(result, SH.resultMessage)
         min_count = results_graph.value(result, SH.minCount)
 
-        # Convert blank-node property shapes to their parent node shape:
         if isinstance(source_shape, rdflib.BNode):
             parent_shapes = list(shapes_graph.subjects(predicate=SH.property, object=source_shape))
             if parent_shapes:
@@ -313,9 +297,15 @@ def _handle_violations(data_graph, shapes_graph, results_graph, results_text, er
 
 #Functions for AERIUS API
 def fill_template(template, **kwargs):
+    """
+    Fill template with keyword arguments.
+    """
     return template.format(**kwargs)
 
 def start_calculation(filepath):
+    """
+    Start the AERIUS calculation job with the filled out template.
+    """
     options = {
         "name": "Nitrogen Deposition Calculation",
         "calculationYear": 2025,
@@ -351,6 +341,9 @@ def start_calculation(filepath):
     return None
 
 def retrieve_job_result(job_key):
+    """
+    Retrieve the result of the AERIUS calculation job.
+    """
     headers = {
         "api-key": API_KEY,
         "Accept": "application/json",
@@ -365,6 +358,9 @@ def extract_zip(zip_path, extract_to):
         zip_ref.extractall(extract_to)
 
 def extract_mobile_sources_from_ontology(g):
+    """
+    Get information about MobileSources from the ontology graph.
+    """
     mobile_sources = []
     
     for source in g.subjects(rdflib.RDF.type, rdflib.URIRef("http://example.org/graphs/aerius-extension#MobileSource")):
@@ -378,7 +374,6 @@ def extract_mobile_sources_from_ontology(g):
             "NO2": g.value(source, rdflib.URIRef("http://example.org/graphs/aerius-extension#emitsNO2"))
         }
 
-        # Extract specific mobile sources
         specific_sources = []
         for specific in g.objects(source, rdflib.URIRef("http://example.org/graphs/aerius-extension#hasSpecificMobileSource")):
             mobtype = g.value(specific, rdflib.URIRef("http://example.org/graphs/aerius-extension#mobtype"))
@@ -397,6 +392,9 @@ def extract_mobile_sources_from_ontology(g):
     return mobile_sources
 
 def generate_gml_from_ontology(g):
+    """
+    Used to generate a GML file from the ontology graph.
+    """
     mobile_sources = extract_mobile_sources_from_ontology(g)
     featuremembers = ''.join(mobile_sources) + calcpoint
 
@@ -410,6 +408,9 @@ def generate_gml_from_ontology(g):
     return gml_content
 
 def generate_gml_from_form_data(form_data):
+    """
+    Generate a GML file from the UI's form data.
+    """
     mobile_sources = []
 
     for source in form_data["mobile_sources"]:
@@ -437,6 +438,9 @@ def generate_gml_from_form_data(form_data):
 #App routes for Shacl
 @app.route("/")
 def index():
+    """
+    Render home page with shacl validator.
+    """
     error = request.args.get("error")
     error_details = request.args.get("error_details")
     success = request.args.get("success")
@@ -533,15 +537,12 @@ def upload_and_validate():
     data_graph = rdflib.Graph()
     data_graph.parse(data=ttl_data, format="turtle")
 
-    # Merge in-memory new doc
     for (s, p, o) in added_triples_history:
         data_graph.add((rdflib.URIRef(s), rdflib.URIRef(p), rdflib.Literal(o)))
 
-    # Parse shapes
     shapes_graph = rdflib.Graph()
     shapes_graph.parse(SHAPES_FILE_PATH, format="turtle")
 
-    # Validate
     conforms, results_graph, results_text = validate(
         data_graph=data_graph,
         shacl_graph=shapes_graph,
@@ -552,7 +553,6 @@ def upload_and_validate():
     )
 
     if conforms:
-        # Insert into GraphDB
         graph_uri = f"http://example.org/graphs/{file.filename}"
         try:
             update_query = construct_insert_query(graph_uri, ttl_data)
@@ -560,18 +560,15 @@ def upload_and_validate():
         except Exception as e:
             return redirect(url_for("index", error=f"Insertion to GraphDB failed: {str(e)}"))
 
-        # Save merged data
         merged_triples = [(str(s), str(p), str(o)) for (s, p, o) in data_graph]
         with open(LAST_UPLOADED_FILE_JSON, "w") as f:
             json.dump(merged_triples, f, indent=2)
 
-        # Reset SHACL info
         with open(SHACL_OVERVIEW_JSON, "w") as f:
             json.dump({"overview": [], "violations": []}, f)
 
         return redirect(url_for("index", success="File uploaded and validated successfully!"))
 
-    # If not conforming => gather violations
     return _handle_violations(data_graph, shapes_graph, results_graph, results_text, "SHACL validation failed.")
 
 @app.route("/revalidate", methods=["POST"])
@@ -591,7 +588,6 @@ def revalidate():
             (rdflib.URIRef(s), rdflib.URIRef(p), create_rdflib_node(o))
         )
 
-    # Add new doc
     for (s, p, o) in added_triples_history:
         data_graph.add(
             (rdflib.URIRef(s), rdflib.URIRef(p), create_rdflib_node(o))
@@ -630,7 +626,7 @@ def add_missing_data():
     object_value = request.form.get("object_value", "").strip()
     target_class = request.form.get("target_class", "").strip()
 
-    # Wizard fields for MobileSource
+    # MobileSource
     mosolabel = request.form.get("mosolabel_wiz", "").strip()
     mosoposition = request.form.get("mosoposition_wiz", "").strip()
     sectorid = request.form.get("sectorid_wiz", "").strip()
@@ -639,20 +635,18 @@ def add_missing_data():
     emitsPM10 = request.form.get("emitsPM10_wiz", "").strip()
     emitsNO2 = request.form.get("emitsNO2_wiz", "").strip()
 
-    # Optional sub-wizard for the same MobileSource
+    # Optional mobile source
     sms_mobtype = request.form.get("wizard_sms_mobtype", "").strip()
     sms_fuelyear = request.form.get("wizard_sms_fuelyear", "").strip()
     sms_desc = request.form.get("wizard_sms_description", "").strip()
 
-    # Wizard fields for SpecificMobileSource
+    # SpecificMobileSource
     sm_mobtype = request.form.get("mobtype_wiz", "").strip()
     sm_fuelyear = request.form.get("fuelyear_wiz", "").strip()
     sm_description = request.form.get("description_wiz", "").strip()
 
-    # 1) If user chose "Manual Focus Node," build a real URI
+    # If user chose "Manual Focus Node," build a real URI
     if focus_node == "MANUAL_FOCUS":
-        # If they typed an absolute URI => keep it
-        # Else prefix it with e.g. "http://example.org/test-data#"
         if manual_focus_val.startswith("http://") or manual_focus_val.startswith("https://"):
             focus_node = manual_focus_val
         else:
@@ -661,17 +655,15 @@ def add_missing_data():
     if not shape_uri or not focus_node:
         return redirect(url_for("index", error="No shape or focus node selected."))
 
-    # 2) If shape = MobileSourceShape & user filled wizard => create all props
+    # If shape = MobileSourceShape & user filled wizard => create all props
     if shape_uri.endswith("MobileSourceShape") and (
         mosolabel or mosoposition or sectorid or emitsNH3 or emitsNOX or emitsPM10 or emitsNO2
     ):
-        # type triple
         added_triples_history.append(
             (focus_node, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
              "http://example.org/graphs/aerius-extension#MobileSource")
         )
 
-        # add properties, converting numeric fields
         if mosolabel:
             added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#mosolabel", mosolabel))
         if mosoposition:
@@ -679,7 +671,6 @@ def add_missing_data():
         if sectorid:
             added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#sectorid", sectorid))
 
-        # parse numeric
         if emitsNH3:
             added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#emitsNH3",
                                           parse_numeric(emitsNH3)))
@@ -693,10 +684,9 @@ def add_missing_data():
             added_triples_history.append((focus_node, "http://example.org/graphs/aerius-extension#emitsNO2",
                                           parse_numeric(emitsNO2)))
 
-        # sub-wizard for creating a single SpecificMobileSource
+        # Single SpecificMobileSource
         if sms_mobtype or sms_fuelyear or sms_desc:
-            # create a new node for the SpecificMobileSource
-            sm_uri = f"http://example.org/test-data#SMS_{uuid.uuid4().hex[:6]}"  # or generate a user-provided name
+            sm_uri = f"http://example.org/test-data#SMS_{uuid.uuid4().hex[:6]}"  
             added_triples_history.append(
                 (focus_node, "http://example.org/graphs/aerius-extension#hasSpecificMobileSource", sm_uri)
             )
@@ -714,9 +704,8 @@ def add_missing_data():
 
         return redirect(url_for("index", success="MobileSource wizard data added!"))
 
-    # 3) If shape = SpecificMobileSourceShape => create it
+    # If shape = SpecificMobileSourceShape => create it
     if shape_uri.endswith("SpecificMobileSourceShape") and (sm_mobtype or sm_fuelyear or sm_description):
-        # type triple
         added_triples_history.append(
             (focus_node, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
              "http://example.org/graphs/aerius-extension#SpecificMobileSource")
@@ -731,16 +720,13 @@ def add_missing_data():
 
         return redirect(url_for("index", success="SpecificMobileSource wizard data added!"))
 
-    # 4) Fallback single property approach
+    # Fallback single property approach
     if predicate and object_value:
-        # Single triple approach
         added_triples_history.append((focus_node, predicate, parse_numeric_or_uri(object_value)))
 
-        # If shape has a target class => type triple
         if target_class:
             added_triples_history.append((focus_node, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", target_class))
 
-        # If property == hasEmissionSource => type object as EmissionSource
         if predicate == "http://example.org/graphs/aerius-extension#hasEmissionSource":
             added_triples_history.append((
                 object_value,
@@ -750,7 +736,6 @@ def add_missing_data():
 
         return redirect(url_for("index", success="Single triple data added!"))
 
-    # 5) No data
     return redirect(url_for("index", error="No wizard fields or single property provided."))
 
 @app.route("/delete_new_triple", methods=["POST"])
@@ -821,7 +806,7 @@ def aerius():
     else:
         g = rdflib.Graph()
 
-    # Extract all available projects
+    # Get all projects from the file
     projects = []
     for project in g.subjects(rdflib.RDF.type, rdflib.URIRef("http://example.org/graphs/aerius-extension#ConstructionProject")):
         label = g.value(project, rdflib.RDFS.label)
@@ -835,7 +820,6 @@ def aerius():
 
     selected_project = request.args.get("project")
     if selected_project:
-        # Load details for the selected project
         project_uri = rdflib.URIRef(selected_project)
         form_data["name"] = g.value(project_uri, rdflib.RDFS.label, default="Unnamed Project")
 
@@ -865,11 +849,9 @@ def aerius():
                     "specific_sources": specific_sources
                 })
     if request.method == 'POST':
-        # Get updated data from the form
         form_data["name"] = request.form.get("name", "Default Project Name")
         form_data["year"] = request.form.get("year", "2025")
-
-        # Update mobile sources with user-edited values
+        # Update mobile sources
         updated_mobile_sources = []
         for i, source in enumerate(form_data["mobile_sources"]):
             updated_source = {
@@ -886,7 +868,7 @@ def aerius():
                 "q": i + 1
             }
 
-            # Handle specific mobile sources
+            # Update SpecificMobileSources
             for j, specific in enumerate(source["specific_sources"]):
                 updated_specific = {
                     "mobtype": request.form.get(f"mobtype_{i}_{j}", specific["mobtype"]),
@@ -900,15 +882,12 @@ def aerius():
 
         form_data["mobile_sources"] = updated_mobile_sources
 
-        # Generate GML content
         gml_content = generate_gml_from_form_data(form_data)
 
-        # Save GML file
         output_path = os.path.join(UPLOAD_FOLDER, 'output.gml')
         with open(output_path, 'w') as file:
             file.write(gml_content)
 
-        # Start calculation
         job_key = start_calculation(output_path)
         if job_key:
             jobs[job_key] = {"status": "RUNNING", "files": [], "name": form_data["name"]}
@@ -922,6 +901,9 @@ def aerius():
 
 @app.route('/aerius/check_status/<job_key>/<job_name>', methods=['GET'])
 def check_status(job_key, job_name):
+    """
+    Check the status of the selected job.
+    """
     job_info = retrieve_job_result(job_key)
     if job_info:
         if job_info.get("status") == "COMPLETED":

@@ -6,7 +6,19 @@
 @prefix aerius: <http://example.org/graphs/aerius-extension#> .
 @prefix : <http://example.org/graphs/example-projects#> .
 
-# Shape for Project
+################################################################################
+# SHACL Shapes for Multi-Layer Validation
+#
+# These shapes enforce the structure of our ontology for linking the NEN 2660
+# standard with AERIUS calculations. Rather than merely checking that a property 
+# is of a given class (using sh:class), we use sh:node to reference the entire 
+# shape of nested resources. This multi-layer approach is crucial because, for 
+# example, an Activity must not only link to a MobileSource but that MobileSource 
+# must itself fulfill all required constraints (e.g., emission values and linked 
+# SpecificMobileSource details).
+################################################################################
+
+# Shape for ConstructionProject
 :ConstructionProjectShape
     a sh:NodeShape ;
     sh:targetClass aerius:ConstructionProject ;
@@ -18,7 +30,7 @@
     ] ;
     sh:property [
         sh:path aerius:includes ;
-        sh:class nen:Activity ;
+        sh:node nen:Activity ;  # This level is validated separately via ActivityShape
         sh:minCount 1 ;
     ] ;
     sh:property [
@@ -37,13 +49,14 @@
         sh:minCount 1 ;
         sh:maxCount 1 ;
     ] ;
+    # Instead of simply ensuring a MobileSource is present, we validate the entire MobileSourceShape.
     sh:property [
         sh:path aerius:hasEmissionSource ;
-        sh:class aerius:MobileSource ;
+        sh:node :MobileSourceShape ;
         sh:minCount 1 ;
     ] .
 
-# Shape for Mobile Source
+# Shape for MobileSource
 :MobileSourceShape
     a sh:NodeShape ;
     sh:targetClass aerius:MobileSource ;
@@ -55,7 +68,7 @@
     ] ;
     sh:property [
         sh:path aerius:mosoposition ;
-        sh:datatype xsd:string ; # Could be more precise if it's a spatial datatype
+        sh:datatype xsd:string ;  # This could be replaced with a spatial datatype if available.
         sh:minCount 1 ;
         sh:maxCount 1 ;
     ] ;
@@ -85,13 +98,14 @@
         sh:datatype xsd:decimal ;
         sh:minCount 1 ;
     ] ;
+    # Here, we ensure that each MobileSource contains a valid SpecificMobileSource as defined below.
     sh:property [
         sh:path aerius:hasSpecificMobileSource ;
-        sh:class aerius:SpecificMobileSource ;
+        sh:node :SpecificMobileSourceShape ;
         sh:minCount 1 ;
     ] .
 
-# Shape for Specific Mobile Source
+# Shape for SpecificMobileSource
 :SpecificMobileSourceShape
     a sh:NodeShape ;
     sh:targetClass aerius:SpecificMobileSource ;
@@ -103,7 +117,7 @@
     ] ;
     sh:property [
         sh:path aerius:fuelyear ;
-        sh:datatype xsd:integer ;
+        sh:datatype xsd:integer ;  # Use xsd:decimal if fractional values are required.
         sh:minCount 1 ;
         sh:maxCount 1 ;
     ] ;

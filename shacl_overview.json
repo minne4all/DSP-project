@@ -1,1 +1,44 @@
-{"overview": [], "violations": []}
+{
+  "overview": [
+    {
+      "shape_name": "http://example.org/graphs/example-projects#ConstructionProjectShape",
+      "shape_description": "",
+      "status": "Violated",
+      "focus_nodes": [
+        "http://example.org/graphs/example-projects#Project1"
+      ],
+      "progress": "0% (still 1 violation(s))"
+    },
+    {
+      "shape_name": "http://example.org/graphs/example-projects#ActivityShape",
+      "shape_description": "",
+      "status": "Conforms",
+      "focus_nodes": [],
+      "progress": "100%"
+    },
+    {
+      "shape_name": "http://example.org/graphs/example-projects#MobileSourceShape",
+      "shape_description": "",
+      "status": "Conforms",
+      "focus_nodes": [],
+      "progress": "100%"
+    },
+    {
+      "shape_name": "http://example.org/graphs/example-projects#SpecificMobileSourceShape",
+      "shape_description": "",
+      "status": "Conforms",
+      "focus_nodes": [],
+      "progress": "100%"
+    }
+  ],
+  "violations": [
+    {
+      "focus_node": "http://example.org/graphs/example-projects#Project1",
+      "result_path": "http://example.org/graphs/aerius-extension#affects",
+      "severity": "http://www.w3.org/ns/shacl#Violation",
+      "source_shape": "http://example.org/graphs/example-projects#ConstructionProjectShape",
+      "message": "Value does not have class nen:Region",
+      "min_count": null
+    }
+  ]
+}
